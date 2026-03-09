@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-// ── PALETA ────────────────────────────────────────────────
 const C = {
   bg:"#FAF5EC", panel:"#F0E8D8", card:"#FFFFFF", borde:"#D6C9B0",
   hover:"#F5EDD8", texto:"#1A2E0A", gris:"#7A8C6A",
@@ -8,115 +7,75 @@ const C = {
   amber:"#C4781A", amberL:"#FFF3DC",
   rojo:"#C0392B",  rojoL:"#FDE8E8",
   azul:"#1A5276",  azulL:"#EAF2FB",
-  morado:"#6C3483",moradoL:"#F5EEF8",
 };
 
-// ── DATOS REALES DEL MASTER FILE ─────────────────────────
+// ── DATOS REALES MASTER FILE ──────────────────────────────
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
-// KPIs mensuales 2026
-const KPIS_2026 = [
-  { mes:"Ene",  compras:494864.60, exportado:2297452.53, tallos:4354855, precio:0.5276, costoTallo:0.1136, prodBruta:5112061 },
-  { mes:"Feb",  compras:501492.94, exportado:2465284.06, tallos:4241496, precio:0.5812, costoTallo:0.1182, prodBruta:null },
+const TOTALES_ANUALES = [
+  { año:2023, total:4866164, completo:true },
+  { año:2024, total:5106708, completo:true },
+  { año:2025, total:5297155, completo:true },
+  { año:2026, total:996670,  completo:false, nota:"Ene–Feb" },
 ];
 
-const META_COSTO_TALLO = 0.0338;
+const MENSUALES = {
+  2023:[561238,457772,294892,450965,451604,382958,371681,323810,433908,362345,402309,372677],
+  2024:[518099,391704,412529,487554,418303,344582,432437,421850,457859,422478,369776,429532],
+  2026:[495176,501492,null,null,null,null,null,null,null,null,null,null],
+};
 
-// Categorías 2026
-const CATS_2026 = [
-  { cat:"Material de Empaque",         ene:177023.97, feb:138266.92 },
-  { cat:"Abonos y Fertilizantes",      ene:121729.13, feb:154570.41 },
-  { cat:"Fungicidas",                  ene: 82679.67, feb: 88705.03 },
-  { cat:"Otros Insumos",               ene: 30614.72, feb: 23327.11 },
-  { cat:"Mat. Flores Tinturadas",      ene: 24173.10, feb: 19219.12 },
-  { cat:"Pesticidas e Insecticidas",   ene: 16620.68, feb: 21310.45 },
-  { cat:"Repuestos y Accesorios",      ene: 17637.27, feb: 13719.60 },
-  { cat:"Ropa e Implementos Seg.",     ene: 10191.97, feb: 11796.93 },
-  { cat:"Material Biológico",          ene:  8500.24, feb:  7273.15 },
-  { cat:"Plásticos Invernaderos",      ene:  1733.13, feb: 19992.31 },
-  { cat:"Herramientas Agrícolas",      ene:  2329.22, feb:  1532.05 },
-  { cat:"Suministros Oficina",         ene:  1502.25, feb:  1472.98 },
+const COSTO_TALLO_2024 = [0.1376,0.1063,0.1391,0.1229,0.1247,0.1376,0.1394,0.1551,0.1519,0.1150,0.1156,0.1532];
+const COSTO_TALLO_2026 = [0.1136,0.1182];
+
+const CATS = [
+  { cat:"Abonos y Fertilizantes",  c2023:1829798, c2024:1720766, c2026p:276299  },
+  { cat:"Material de Empaque",     c2023:1292469, c2024:1319976, c2026p:315290  },
+  { cat:"Fungicidas",              c2023:560330,  c2024:815231,  c2026p:171384  },
+  { cat:"Pesticidas e Insect.",    c2023:378290,  c2024:265965,  c2026p:37931   },
+  { cat:"Repuestos y Accesorios",  c2023:205199,  c2024:213600,  c2026p:31356   },
+  { cat:"Plásticos Invernaderos",  c2023:187485,  c2024:188076,  c2026p:21725   },
+  { cat:"Otros Insumos",           c2023:137756,  c2024:167421,  c2026p:53941   },
+  { cat:"Mat. Flores Tinturadas",  c2023:68819,   c2024:138226,  c2026p:43392   },
+  { cat:"Ropa e Impl. Seguridad",  c2023:111982,  c2024:130438,  c2026p:21988   },
+  { cat:"Material Biológico",      c2023:51804,   c2024:109025,  c2026p:15773   },
 ];
 
-// Ranking proveedores 2025 (datos reales)
-const RANKING_2025 = [
-  { nombre:"Megastockec Distribuidora Agrícola S.A.",                    total:478605.61, pct:9.04,  cat:"EMPAQUE"        },
-  { nombre:"Fito Sanitario Fitosan S.A.",                                total:345520.50, pct:6.52,  cat:"FERTILIZANTES"  },
-  { nombre:"Papelera Nacional S.A.",                                     total:300262.89, pct:5.67,  cat:"EMPAQUE"        },
-  { nombre:"Ecuaquimica Ecuatoriana De Productos Quimicos Ca",           total:267066.35, pct:5.04,  cat:"AGROQUÍMICOS"   },
-  { nombre:"Alexis Mejía Representaciones Cía. Ltda.",                   total:253412.17, pct:4.78,  cat:"AGROQUÍMICOS"   },
-  { nombre:"Proflower S.A.",                                             total:238176.54, pct:4.50,  cat:"FERTILIZANTES"  },
-  { nombre:"Corporación Internacional de Cultivos Corpcultivos S.A.S.", total:214650.77, pct:4.05,  cat:"AGROQUÍMICOS"   },
-  { nombre:"Fertilizantes Y Agroquímicos Europeos Eurofert S.A.",        total:188218.51, pct:3.55,  cat:"FERTILIZANTES"  },
-  { nombre:"Haifa Ecuador S.A.",                                         total:164368.40, pct:3.10,  cat:"FERTILIZANTES"  },
-  { nombre:"Vallejo Mosquera Enrique Francisco",                         total:160041.22, pct:3.02,  cat:"EMPAQUE"        },
-  { nombre:"Amc Ecuador Cía. Ltda.",                                     total:152895.62, pct:2.89,  cat:"EMPAQUE"        },
-  { nombre:"Insumos Químicos Santander Insuquimsa Cía. Ltda.",           total:147632.25, pct:2.79,  cat:"FERTILIZANTES"  },
-  { nombre:"Agroimportadora Plastiseed S.A.",                            total:145618.93, pct:2.75,  cat:"PLÁSTICOS"      },
-  { nombre:"Crait Cía. Ltda.",                                           total:133754.30, pct:2.53,  cat:"FERTILIZANTES"  },
-  { nombre:"Almeida Davalos Diego Joel",                                 total:109840.06, pct:2.07,  cat:"TINTURADAS"     },
+const PROVS = [
+  { n:"Megastockec Distribuidora Agrícola S.A.",    t:478605, pct:9.04, cat:"EMPAQUE",       r2024:true,  r2023:true  },
+  { n:"Fito Sanitario Fitosan S.A.",                t:345520, pct:6.52, cat:"FERTILIZANTES", r2024:true,  r2023:true  },
+  { n:"Papelera Nacional S.A.",                     t:300262, pct:5.67, cat:"EMPAQUE",       r2024:true,  r2023:true  },
+  { n:"Ecuaquimica Ecuatoriana",                    t:267066, pct:5.04, cat:"AGROQUÍMICOS",  r2024:true,  r2023:true  },
+  { n:"Alexis Mejía Representaciones Cía. Ltda.",   t:253412, pct:4.78, cat:"AGROQUÍMICOS",  r2024:true,  r2023:false },
+  { n:"Proflower S.A.",                             t:238176, pct:4.50, cat:"FERTILIZANTES", r2024:true,  r2023:true  },
+  { n:"Corpcultivos S.A.S.",                        t:214650, pct:4.05, cat:"AGROQUÍMICOS",  r2024:true,  r2023:true  },
+  { n:"Eurofert S.A.",                              t:188218, pct:3.55, cat:"FERTILIZANTES", r2024:true,  r2023:true  },
+  { n:"Haifa Ecuador S.A.",                         t:164368, pct:3.10, cat:"FERTILIZANTES", r2024:false, r2023:false },
+  { n:"Vallejo Mosquera Enrique Francisco",         t:160041, pct:3.02, cat:"EMPAQUE",       r2024:true,  r2023:true  },
+  { n:"Amc Ecuador Cía. Ltda.",                     t:152895, pct:2.89, cat:"EMPAQUE",       r2024:true,  r2023:true  },
+  { n:"Insuquimsa Cía. Ltda.",                      t:147632, pct:2.79, cat:"FERTILIZANTES", r2024:true,  r2023:false },
+  { n:"Agroimportadora Plastiseed S.A.",            t:145618, pct:2.75, cat:"PLÁSTICOS",     r2024:true,  r2023:true  },
+  { n:"Crait Cía. Ltda.",                           t:133754, pct:2.53, cat:"FERTILIZANTES", r2024:true,  r2023:true  },
+  { n:"Almeida Davalos Diego Joel",                 t:109840, pct:2.07, cat:"TINTURADAS",    r2024:true,  r2023:true  },
 ];
 
-// Totales 2025 (calculado del ranking)
-const TOTAL_2025 = 5297155.0;
-
-// Proveedores Enero 2026 (del CSV anterior)
-const PROVS_ENE_2026 = [
-  { nombre:"Megastockec Distribuidora Agrícola S.A.",  monto:59785.83 },
-  { nombre:"Papelera Nacional S.A.",                   monto:39816.00 },
-  { nombre:"Fito Sanitario Fitosan S.A.",              monto:33647.00 },
-  { nombre:"Vallejo Mosquera Enrique Francisco",       monto:24003.60 },
-  { nombre:"Ecuaquimica Ecuatoriana",                  monto:22776.87 },
-  { nombre:"Corpcultivos S.A.S.",                      monto:21707.66 },
-  { nombre:"Paillacho Marmol Diego Fernando",          monto:16376.30 },
-  { nombre:"Almeida Davalos Diego Joel",               monto:14667.95 },
-  { nombre:"Crait Cía. Ltda.",                         monto:14381.54 },
-  { nombre:"Eurofert S.A.",                            monto:14353.00 },
-];
+const COLORES_AÑO = { 2023:"#1A5276", 2024:"#2D5016", 2025:"#C4781A", 2026:"#C0392B" };
+const COLORES_CAT = ["#2D5016","#1A5276","#4A7C3F","#C4781A","#6C3483","#0E6655","#C0392B","#EC4899","#7A8C6A","#D4A017"];
 
 // ── HELPERS ──────────────────────────────────────────────
-const fmt$ = v => v>=1e6?`$${(v/1e6).toFixed(3)}M`:v>=1e3?`$${(v/1e3).toFixed(1)}K`:`$${Number(v).toLocaleString("es-EC",{minimumFractionDigits:2})}`;
-const fmtN = v => Number(v).toLocaleString("es-EC");
-const pctFmt = v => `${(v*100).toFixed(2)}%`;
-const hoy = () => new Date().toLocaleDateString("es-EC",{day:"2-digit",month:"long",year:"numeric"});
+const fmt$ = v => v==null?"—":v>=1e6?`$${(v/1e6).toFixed(2)}M`:v>=1e3?`$${(v/1e3).toFixed(1)}K`:`$${Number(v).toFixed(0)}`;
+const hoy  = () => new Date().toLocaleDateString("es-EC",{day:"2-digit",month:"long",year:"numeric"});
 
-const CAT_COLORES = {
-  "EMPAQUE":C.azul, "FERTILIZANTES":C.verde, "AGROQUÍMICOS":C.verdeM,
-  "PLÁSTICOS":C.amber, "TINTURADAS":"#EC4899", "default":C.gris
-};
-const catColor = c => CAT_COLORES[c] || CAT_COLORES.default;
-
-// ── COMPONENTES ──────────────────────────────────────────
-function KCard({icono,label,valor,sub,color,ok,meta}) {
-  const col = color || C.verde;
+// ── COMPONENTES BASE ──────────────────────────────────────
+function KCard({icono,label,valor,sub,color,delta}) {
+  const col = color||C.verde;
   return (
     <div style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:12,padding:"18px 20px",borderTop:`3px solid ${col}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-        <span style={{fontSize:24}}>{icono}</span>
-        {ok!==undefined && <span style={{fontSize:20}}>{ok?"🟢":"🔴"}</span>}
-      </div>
-      <div style={{fontSize:26,fontWeight:800,color:C.texto,fontFamily:"monospace",lineHeight:1}}>{valor}</div>
+      <div style={{fontSize:22,marginBottom:8}}>{icono}</div>
+      <div style={{fontSize:22,fontWeight:800,color:C.texto,fontFamily:"monospace",lineHeight:1}}>{valor}</div>
       <div style={{fontSize:12,fontWeight:700,color:C.texto,marginTop:6}}>{label}</div>
-      {sub  && <div style={{fontSize:10.5,color:C.gris,marginTop:3}}>{sub}</div>}
-      {meta && <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>Meta: {meta}</div>}
-    </div>
-  );
-}
-
-function BarraH({label,valor,max,color,sufijo,pct,rank}) {
-  const col = color || C.verde;
-  const w   = pct!=null ? pct : Math.min((valor/max)*100,100);
-  return (
-    <div style={{marginBottom:9}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,gap:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>
-          {rank && <span style={{fontSize:10,fontWeight:800,color:rank<=3?C.amber:C.gris,width:16,flexShrink:0}}>#{rank}</span>}
-          <span style={{fontSize:11,color:C.texto,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
-        </div>
-        <span style={{fontSize:11,fontWeight:700,color:col,fontFamily:"monospace",flexShrink:0}}>{typeof valor==="number"?valor.toLocaleString("es-EC"):valor}{sufijo||""}</span>
-      </div>
-      <div style={{height:7,background:C.panel,borderRadius:4,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${w}%`,background:col,borderRadius:4}}/>
-      </div>
+      {sub && <div style={{fontSize:10.5,color:C.gris,marginTop:3}}>{sub}</div>}
+      {delta!=null && <div style={{fontSize:11,fontWeight:700,color:delta>=0?C.rojo:C.verde,marginTop:4}}>{delta>=0?"▲":"▼"} {Math.abs(delta).toFixed(1)}% vs año anterior</div>}
     </div>
   );
 }
@@ -124,10 +83,10 @@ function BarraH({label,valor,max,color,sufijo,pct,rank}) {
 function SecCard({titulo,children,extra,sub}) {
   return (
     <div style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:14,padding:"20px 22px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sub?6:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:sub?4:16}}>
         <div>
           <h3 style={{color:C.texto,fontSize:13,fontWeight:700,margin:0}}>{titulo}</h3>
-          {sub && <p style={{color:C.gris,fontSize:10.5,margin:"2px 0 14px"}}>{sub}</p>}
+          {sub && <p style={{color:C.gris,fontSize:10.5,margin:"3px 0 14px"}}>{sub}</p>}
         </div>
         {extra}
       </div>
@@ -137,416 +96,306 @@ function SecCard({titulo,children,extra,sub}) {
 }
 
 function Badge({texto,color}) {
-  const col = color || C.gris;
+  const col = color||C.gris;
   return <span style={{background:col+"18",color:col,border:`1px solid ${col}33`,fontSize:9.5,padding:"2px 8px",borderRadius:10,fontWeight:700,whiteSpace:"nowrap"}}>{texto}</span>;
 }
 
-// ── TABS ─────────────────────────────────────────────────
 const TABS = [
-  {id:"resumen",   label:"Resumen Ejecutivo", icono:"📊"},
-  {id:"gasto",     label:"Gasto & Evolución",  icono:"💵"},
-  {id:"proveedores",label:"Proveedores",       icono:"🏭"},
-  {id:"categorias",label:"Categorías",         icono:"📦"},
-  {id:"kpis",      label:"KPIs Compras",       icono:"🎯"},
+  {id:"tendencias",  label:"Tendencias 2023–2026", icono:"📈"},
+  {id:"estacional",  label:"Estacionalidad",        icono:"📅"},
+  {id:"categorias",  label:"Categorías Año a Año",  icono:"📦"},
+  {id:"costo",       label:"Costo por Tallo",       icono:"💲"},
+  {id:"proveedores", label:"Proveedores Nuevos vs Recurrentes", icono:"🏭"},
 ];
 
 // ══════════════════════════════════════════════════════════
-//  TAB 1 — RESUMEN EJECUTIVO
+//  TAB 1 — TENDENCIAS
 // ══════════════════════════════════════════════════════════
-function TabResumen() {
-  const ene = KPIS_2026[0];
-  const feb = KPIS_2026[1];
-  const deltaCompras = ((feb.compras - ene.compras) / ene.compras * 100).toFixed(1);
-  const totalAcum = ene.compras + feb.compras;
-  const top3pct = PROVS_ENE_2026.slice(0,3).reduce((a,b)=>a+b.monto,0) / ene.compras * 100;
-  const top10pct = PROVS_ENE_2026.reduce((a,b)=>a+b.monto,0) / ene.compras * 100;
+function TabTendencias() {
+  const maxV = Math.max(...TOTALES_ANUALES.map(a=>a.total));
+  const d2324 = ((5106708-4866164)/4866164*100);
+  const d2425 = ((5297155-5106708)/5106708*100);
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      {/* Banner */}
-      <div style={{background:`linear-gradient(135deg, ${C.verde} 0%, ${C.verdeM} 100%)`,borderRadius:14,padding:"24px 28px",color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",opacity:0.8,marginBottom:4}}>Dashboard Ejecutivo</div>
-          <h2 style={{fontSize:24,fontWeight:800,margin:"0 0 4px"}}>Procurement · Grupo Hoja Verde</h2>
-          <p style={{fontSize:12,opacity:0.7,margin:0}}>Datos reales al {hoy()} · Enero–Febrero 2026</p>
-        </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontSize:11,opacity:0.7}}>Gasto acumulado 2026</div>
-          <div style={{fontSize:32,fontWeight:800,fontFamily:"monospace"}}>{fmt$(totalAcum)}</div>
-          <div style={{fontSize:11,opacity:0.7,marginTop:2}}>2 meses registrados</div>
-        </div>
-      </div>
-
-      {/* KPIs principales */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-        <KCard icono="💵" label="Gasto Enero 2026"  valor={fmt$(ene.compras)} sub="Mes más reciente completo" color={C.verde}/>
-        <KCard icono="📈" label="Gasto Febrero 2026" valor={fmt$(feb.compras)} sub={`${deltaCompras>0?"▲":"▼"} ${Math.abs(deltaCompras)}% vs Enero`} color={parseFloat(deltaCompras)<10?C.verde:C.amber}/>
-        <KCard icono="⚠️" label="Concentración Top 3" valor={`${top3pct.toFixed(1)}%`} sub="Ene 2026 · Riesgo alto" color={top3pct>30?C.rojo:C.amber} ok={top3pct<25}/>
-        <KCard icono="🏭" label="Total 2025 gestionado" valor={fmt$(TOTAL_2025)} sub={`${RANKING_2025.length}+ proveedores activos`} color={C.azul}/>
+        <KCard icono="📊" label="Total 2023" valor={fmt$(4866164)} sub="Año completo" color={COLORES_AÑO[2023]}/>
+        <KCard icono="📊" label="Total 2024" valor={fmt$(5106708)} sub="Año completo" color={COLORES_AÑO[2024]} delta={d2324}/>
+        <KCard icono="📊" label="Total 2025" valor={fmt$(5297155)} sub="Año completo" color={COLORES_AÑO[2025]} delta={d2425}/>
+        <KCard icono="📊" label="2026 Ene–Feb" valor={fmt$(996670)}  sub="2 meses" color={COLORES_AÑO[2026]}/>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr",gap:16}}>
-        {/* Top proveedores enero */}
-        <SecCard titulo="Top 10 Proveedores — Enero 2026" sub={`Total: ${fmt$(PROVS_ENE_2026.reduce((a,b)=>a+b.monto,0))} · Top 10 concentra ${top10pct.toFixed(1)}%`}>
-          {PROVS_ENE_2026.map((p,i) => (
-            <BarraH key={i} rank={i+1}
-              label={p.nombre} valor={p.monto}
-              max={PROVS_ENE_2026[0].monto}
-              color={i===0?C.amber:i<3?C.verdeM:C.verde}
-              sufijo=" USD"/>
-          ))}
-        </SecCard>
-
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Costo por tallo */}
-          <SecCard titulo="Costo Compras / Tallo Exportado">
-            {KPIS_2026.map((k,i) => {
-              const ok = k.costoTallo <= META_COSTO_TALLO * 4; // referencia
-              const col = C.verdeM;
-              return (
-                <div key={i} style={{marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                    <span style={{fontSize:12,fontWeight:600,color:C.texto}}>{k.mes} 2026</span>
-                    <span style={{fontSize:14,fontWeight:800,color:col,fontFamily:"monospace"}}>${k.costoTallo.toFixed(4)}/tallo</span>
-                  </div>
-                  <div style={{height:8,background:C.panel,borderRadius:4,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${Math.min(k.costoTallo/0.15*100,100)}%`,background:col,borderRadius:4}}/>
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
-                    <span style={{fontSize:10,color:C.gris}}>Compras: {fmt$(k.compras)}</span>
-                    <span style={{fontSize:10,color:C.gris}}>Tallos: {fmtN(k.tallos)}</span>
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{background:C.verdeL,borderRadius:8,padding:"8px 12px",fontSize:11,color:C.verde,fontWeight:600,marginTop:4}}>
-              Meta costo/tallo exportado: ${META_COSTO_TALLO} (referencia interna)
-            </div>
-          </SecCard>
-
-          {/* Insights clave */}
-          <SecCard titulo="Puntos Clave">
-            {[
-              {i:"🏆",t:"Proveedor ancla",d:"Megastockec: $478K en 2025 (9% del gasto)",c:C.amber},
-              {i:"📦",t:"Cat. más grande 2026",d:"Material de Empaque: $177K en Ene",c:C.azul},
-              {i:"⬆️",t:"Gasto acumulado 2026",d:`${fmt$(totalAcum)} en 2 meses`,c:C.verde},
-              {i:"💲",t:"Precio exportación Feb",d:`$${KPIS_2026[1].precio.toFixed(4)}/tallo (+10.2%)`,c:C.verdeM},
-            ].map((d,i) => (
-              <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:i<3?`1px solid ${C.borde}`:"none"}}>
-                <span style={{fontSize:18,flexShrink:0}}>{d.i}</span>
-                <div>
-                  <div style={{fontSize:11.5,fontWeight:700,color:d.c}}>{d.t}</div>
-                  <div style={{fontSize:10.5,color:C.gris,marginTop:1}}>{d.d}</div>
-                </div>
-              </div>
-            ))}
-          </SecCard>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════
-//  TAB 2 — GASTO & EVOLUCIÓN
-// ══════════════════════════════════════════════════════════
-function TabGasto() {
-  const maxCompras = Math.max(...KPIS_2026.map(k=>k.compras));
-
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        {KPIS_2026.map((k,i) => (
-          <div key={i} style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:12,padding:"18px 20px",borderLeft:`4px solid ${C.verde}`}}>
-            <div style={{fontSize:11,color:C.gris,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.mes} 2026</div>
-            <div style={{fontSize:28,fontWeight:800,color:C.verde,fontFamily:"monospace"}}>{fmt$(k.compras)}</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
-              {[
-                ["Tallos export.",fmtN(k.tallos)],
-                ["Precio/tallo",`$${k.precio.toFixed(4)}`],
-                ["Ventas",fmt$(k.exportado)],
-                ["Costo/tallo",`$${k.costoTallo.toFixed(4)}`],
-              ].map(([l,v]) => (
-                <div key={l} style={{background:C.panel,borderRadius:8,padding:"8px 10px"}}>
-                  <div style={{fontSize:9,color:C.gris,textTransform:"uppercase"}}>{l}</div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.texto,fontFamily:"monospace"}}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-        <div style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:12,padding:"18px 20px",borderLeft:`4px solid ${C.amber}`}}>
-          <div style={{fontSize:11,color:C.gris,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Acumulado 2026</div>
-          <div style={{fontSize:28,fontWeight:800,color:C.amber,fontFamily:"monospace"}}>{fmt$(KPIS_2026.reduce((a,b)=>a+b.compras,0))}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
-            {[
-              ["Total tallos",fmtN(KPIS_2026.reduce((a,b)=>a+b.tallos,0))],
-              ["Total ventas",fmt$(KPIS_2026.reduce((a,b)=>a+b.exportado,0))],
-              ["Prom costo/t",`$${(KPIS_2026.reduce((a,b)=>a+b.costoTallo,0)/KPIS_2026.length).toFixed(4)}`],
-              ["Meses registr.","2 de 12"],
-            ].map(([l,v]) => (
-              <div key={l} style={{background:C.panel,borderRadius:8,padding:"8px 10px"}}>
-                <div style={{fontSize:9,color:C.gris,textTransform:"uppercase"}}>{l}</div>
-                <div style={{fontSize:13,fontWeight:700,color:C.texto,fontFamily:"monospace"}}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Gráfico de barras comparativo */}
-      <SecCard titulo="Comparativo Mensual — Gasto Total de Compras">
-        <div style={{display:"flex",gap:12,alignItems:"flex-end",height:160,padding:"0 10px"}}>
-          {KPIS_2026.map((k,i) => {
-            const h = (k.compras / maxCompras) * 100;
+      <SecCard titulo="Evolución del Gasto Total de Compras 2023–2026" sub="Datos reales del Master File Procurement · Grupo Hoja Verde">
+        <div style={{display:"flex",gap:12,alignItems:"flex-end",height:200,padding:"0 20px",marginBottom:12}}>
+          {TOTALES_ANUALES.map((a,i) => {
+            const h = (a.total/maxV)*100;
+            const col = COLORES_AÑO[a.año];
+            const prev = TOTALES_ANUALES[i-1];
+            const delta = prev&&a.completo&&prev.completo ? ((a.total-prev.total)/prev.total*100) : null;
             return (
-              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.verde,fontFamily:"monospace"}}>{fmt$(k.compras)}</div>
-                <div style={{width:"100%",height:`${h}%`,background:C.verde,borderRadius:"6px 6px 0 0",minHeight:20,display:"flex",alignItems:"flex-end",justifyContent:"center",paddingBottom:4}}>
-                  <span style={{fontSize:9,color:"#fff",fontWeight:700}}>{((k.compras/maxCompras)*100).toFixed(0)}%</span>
-                </div>
-                <div style={{fontSize:12,fontWeight:700,color:C.texto}}>{k.mes} 2026</div>
+              <div key={a.año} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                {delta!=null && <div style={{fontSize:11,fontWeight:700,color:delta>0?C.rojo:C.verde}}>{delta>0?"▲":"▼"}{Math.abs(delta).toFixed(1)}%</div>}
+                <div style={{fontSize:12,fontWeight:800,color:col,fontFamily:"monospace"}}>{fmt$(a.total)}</div>
+                <div style={{width:"90%",height:`${h}%`,background:a.completo?col:col+"55",borderRadius:"6px 6px 0 0",minHeight:12,border:a.completo?"none":`2px dashed ${col}`}}/>
+                <div style={{fontSize:13,fontWeight:700,color:col}}>{a.año}</div>
+                {!a.completo && <div style={{fontSize:9,color:C.gris}}>{a.nota}</div>}
               </div>
             );
           })}
-          {/* Proyección meses sin datos */}
-          {["Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"].map((m,i) => (
-            <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-              <div style={{fontSize:9,color:C.gris}}>—</div>
-              <div style={{width:"100%",height:"15%",background:C.panel,borderRadius:"6px 6px 0 0",border:`1px dashed ${C.borde}`}}/>
-              <div style={{fontSize:11,color:C.gris}}>{m}</div>
-            </div>
-          ))}
         </div>
-        <div style={{display:"flex",gap:16,marginTop:12,padding:"10px 14px",background:C.panel,borderRadius:8}}>
-          <span style={{fontSize:11,color:C.gris}}>📌 Los meses en blanco serán completados conforme se registren compras.</span>
+        <div style={{display:"flex",gap:20,padding:"10px 14px",background:C.panel,borderRadius:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:C.gris,fontWeight:600}}>📈 Crecimiento 2023→2025: <span style={{color:C.rojo}}>+{(((5297155-4866164)/4866164)*100).toFixed(1)}%</span></span>
+          <span style={{fontSize:11,color:C.gris,fontWeight:600}}>💵 Promedio mensual 2024: <span style={{color:C.verde}}>{fmt$(5106708/12)}</span></span>
+          <span style={{fontSize:11,color:C.gris}}>🔲 Barra punteada = dato parcial</span>
         </div>
       </SecCard>
 
-      {/* Relación compras vs ventas */}
-      <SecCard titulo="Relación Compras vs Exportaciones">
-        <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead>
-            <tr style={{background:C.panel}}>
-              {["Mes","Total Compras","Total Exportado","Ratio C/E","Tallos Export.","Precio/Tallo","Costo/Tallo"].map(h=>(
-                <th key={h} style={{padding:"8px 14px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {KPIS_2026.map((k,i) => {
-              const ratio = (k.compras/k.exportado*100).toFixed(1);
-              return (
-                <tr key={i} style={{borderTop:`1px solid ${C.borde}`}}
-                  onMouseEnter={e=>e.currentTarget.style.background=C.hover}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <td style={{padding:"10px 14px",fontWeight:700,color:C.verde,fontSize:12}}>{k.mes} 2026</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",fontWeight:700,color:C.texto,fontSize:12}}>{fmt$(k.compras)}</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",color:C.azul,fontSize:12}}>{fmt$(k.exportado)}</td>
-                  <td style={{padding:"10px 14px",fontSize:12}}>
-                    <span style={{background:parseFloat(ratio)<25?C.verdeL:C.amberL,color:parseFloat(ratio)<25?C.verde:C.amber,padding:"2px 10px",borderRadius:10,fontWeight:700,fontSize:11}}>{ratio}%</span>
-                  </td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",color:C.gris,fontSize:12}}>{fmtN(k.tallos)}</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",fontWeight:700,color:C.verdeM,fontSize:12}}>${k.precio.toFixed(4)}</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",fontWeight:700,color:C.verde,fontSize:12}}>${k.costoTallo.toFixed(4)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <SecCard titulo="Comparativo Mensual 2023 vs 2024 vs 2026" sub="Gasto total por mes · valores en USD">
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
+            <thead>
+              <tr style={{background:C.panel}}>
+                {["Mes","2023","2024","2026","Δ 2023→2024"].map(h=>(
+                  <th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {MESES.map((m,i) => {
+                const v23=MENSUALES[2023][i], v24=MENSUALES[2024][i], v26=MENSUALES[2026][i];
+                const d=((v24-v23)/v23*100);
+                return (
+                  <tr key={m} style={{borderTop:`1px solid ${C.borde}`}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.hover}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <td style={{padding:"8px 12px",fontSize:12,fontWeight:700}}>{m}</td>
+                    <td style={{padding:"8px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2023]}}>{fmt$(v23)}</td>
+                    <td style={{padding:"8px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2024]}}>{fmt$(v24)}</td>
+                    <td style={{padding:"8px 12px",fontFamily:"monospace",fontSize:11,color:v26?COLORES_AÑO[2026]:C.gris}}>{v26?fmt$(v26):"—"}</td>
+                    <td style={{padding:"8px 12px"}}><span style={{fontSize:11,fontWeight:700,color:d>0?C.rojo:C.verde}}>{d>0?"▲":"▼"} {Math.abs(d).toFixed(1)}%</span></td>
+                  </tr>
+                );
+              })}
+              <tr style={{borderTop:`2px solid ${C.verde}`,background:C.verdeL}}>
+                <td style={{padding:"9px 12px",fontSize:12,fontWeight:800,color:C.verde}}>TOTAL</td>
+                <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:COLORES_AÑO[2023]}}>{fmt$(4866164)}</td>
+                <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:COLORES_AÑO[2024]}}>{fmt$(5106708)}</td>
+                <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:COLORES_AÑO[2026]}}>{fmt$(996670)}</td>
+                <td style={{padding:"9px 12px"}}><span style={{fontSize:12,fontWeight:800,color:C.rojo}}>▲ {d2324.toFixed(1)}%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </SecCard>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════
-//  TAB 3 — PROVEEDORES
+//  TAB 2 — ESTACIONALIDAD
 // ══════════════════════════════════════════════════════════
-function TabProveedores() {
-  const [busqueda, setBusqueda] = useState("");
-  const [catFiltro, setCatFiltro] = useState("Todas");
-  const cats = ["Todas", ...new Set(RANKING_2025.map(p=>p.cat))];
-  const filtrados = RANKING_2025.filter(p =>
-    (catFiltro==="Todas" || p.cat===catFiltro) &&
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
-  const top3total = RANKING_2025.slice(0,3).reduce((a,b)=>a+b.total,0);
-  const top5total = RANKING_2025.slice(0,5).reduce((a,b)=>a+b.total,0);
-  const top10total = RANKING_2025.slice(0,10).reduce((a,b)=>a+b.total,0);
+function TabEstacional() {
+  const [año, setAño] = useState("prom");
+  const estac = MESES.map((m,i) => ({
+    mes:m,
+    prom: Math.round((MENSUALES[2023][i]+MENSUALES[2024][i])/2),
+    v2023: MENSUALES[2023][i],
+    v2024: MENSUALES[2024][i],
+  }));
+  const vals = estac.map(e => año==="prom"?e.prom:año==="2023"?e.v2023:e.v2024);
+  const maxV = Math.max(...vals);
+  const minV = Math.min(...vals);
+  const promV = Math.round(vals.reduce((a,b)=>a+b,0)/12);
+  const iMax = vals.indexOf(maxV);
+  const iMin = vals.indexOf(minV);
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-        <KCard icono="🏭" label="Proveedores Ranking 2025" valor={`${RANKING_2025.length}+`} sub="Proveedores activos" color={C.verde}/>
-        <KCard icono="⚠️" label="Concentración Top 3" valor={`${(top3total/TOTAL_2025*100).toFixed(1)}%`} sub={fmt$(top3total)} color={C.rojo} ok={false}/>
-        <KCard icono="📊" label="Concentración Top 5" valor={`${(top5total/TOTAL_2025*100).toFixed(1)}%`} sub={fmt$(top5total)} color={C.amber}/>
-        <KCard icono="✅" label="Concentración Top 10" valor={`${(top10total/TOTAL_2025*100).toFixed(1)}%`} sub={fmt$(top10total)} color={C.azul}/>
+        <KCard icono="📈" label="Mes pico de gasto" valor={MESES[iMax]} sub={`Promedio: ${fmt$(estac[iMax].prom)}`} color={C.rojo}/>
+        <KCard icono="📉" label="Mes mínimo de gasto" valor={MESES[iMin]} sub={`Promedio: ${fmt$(estac[iMin].prom)}`} color={C.verde}/>
+        <KCard icono="📊" label="Promedio mensual" valor={fmt$(promV)} sub="Basado en 2023–2024" color={C.azul}/>
+        <KCard icono="⚡" label="Amplitud estacional" valor={`${(((maxV-minV)/minV)*100).toFixed(0)}%`} sub="Variación máx vs mín" color={C.amber}/>
       </div>
 
-      {/* Pareto */}
-      <SecCard titulo="Análisis de Pareto — Top 10 Proveedores 2025" sub="Curva de concentración de gasto">
-        {RANKING_2025.slice(0,10).map((p,i) => {
-          const cumPct = RANKING_2025.slice(0,i+1).reduce((a,b)=>a+b.pct,0);
-          return (
-            <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <span style={{width:20,fontSize:10.5,fontWeight:800,color:i<3?C.amber:C.gris,flexShrink:0,textAlign:"right"}}>#{i+1}</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2,gap:8}}>
-                  <span style={{fontSize:11,color:C.texto,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:i<3?700:400}}>{p.nombre}</span>
-                  <div style={{display:"flex",gap:8,flexShrink:0}}>
-                    <Badge texto={p.cat} color={catColor(p.cat)}/>
-                    <span style={{fontSize:11,fontWeight:700,color:C.verde,fontFamily:"monospace"}}>{fmt$(p.total)}</span>
-                    <span style={{fontSize:10.5,color:C.gris,minWidth:38}}>{p.pct.toFixed(2)}%</span>
-                  </div>
-                </div>
-                <div style={{height:6,background:C.panel,borderRadius:3,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${p.pct/9.04*100}%`,background:i===0?C.amber:i<3?C.verdeM:C.verde,borderRadius:3}}/>
-                </div>
+      <div style={{display:"flex",gap:8}}>
+        {[{v:"prom",l:"Promedio 2023–2024"},{v:"2023",l:"2023"},{v:"2024",l:"2024"}].map(o=>(
+          <button key={o.v} onClick={()=>setAño(o.v)}
+            style={{background:año===o.v?C.verde:"transparent",border:`1px solid ${año===o.v?C.verde:C.borde}`,borderRadius:18,padding:"5px 14px",fontSize:11,color:año===o.v?"#fff":C.gris,cursor:"pointer",fontWeight:año===o.v?700:400}}>
+            {o.l}
+          </button>
+        ))}
+      </div>
+
+      <SecCard titulo="Estacionalidad del Gasto Mensual" sub="Patrón histórico de compras a lo largo del año">
+        <div style={{display:"flex",gap:6,alignItems:"flex-end",height:180,marginBottom:12}}>
+          {vals.map((v,i) => {
+            const h = (v/maxV)*100;
+            const esPico = i===iMax, esMin = i===iMin;
+            const col = esPico?C.rojo:esMin?C.verde:C.azul;
+            return (
+              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <div style={{fontSize:9,color:col,fontFamily:"monospace",fontWeight:700,textAlign:"center"}}>{fmt$(v)}</div>
+                <div style={{width:"100%",height:`${h}%`,background:col,borderRadius:"4px 4px 0 0",minHeight:6,opacity:esPico||esMin?1:0.65}}/>
+                <div style={{fontSize:10,fontWeight:esPico||esMin?800:400,color:esPico?C.rojo:esMin?C.verde:C.gris}}>{MESES[i]}</div>
+                {esPico && <div style={{fontSize:8,color:C.rojo,fontWeight:700}}>PICO</div>}
+                {esMin  && <div style={{fontSize:8,color:C.verde,fontWeight:700}}>MIN</div>}
               </div>
-              <span style={{fontSize:10,color:cumPct>80?C.rojo:cumPct>60?C.amber:C.verde,fontWeight:700,minWidth:40,flexShrink:0}}>↑{cumPct.toFixed(0)}%</span>
+            );
+          })}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          {[
+            {i:"🔴",t:"Enero es el mes pico",d:"Ene concentra ~12% del gasto anual. Alto flujo de compras de inicio de temporada.",c:C.rojo},
+            {i:"📉",t:"Marzo y Junio son mínimos",d:"Caídas recurrentes en ambos años. Oportunidad para negociar contratos.",c:C.verde},
+            {i:"📈",t:"Sep-Oct recuperación",d:"Repunte consistente en Q3-Q4 en ambos años históricos.",c:C.azul},
+          ].map((d,i)=>(
+            <div key={i} style={{background:C.panel,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${d.c}`}}>
+              <div style={{fontSize:16,marginBottom:4}}>{d.i}</div>
+              <div style={{fontSize:11.5,fontWeight:700,color:d.c,marginBottom:3}}>{d.t}</div>
+              <div style={{fontSize:10.5,color:C.gris,lineHeight:1.5}}>{d.d}</div>
             </div>
-          );
-        })}
-        <div style={{marginTop:12,padding:"10px 14px",background:C.rojoL,borderRadius:8,border:`1px solid ${C.rojo}33`}}>
-          <span style={{fontSize:11,color:C.rojo,fontWeight:700}}>⚠️ Alerta: </span>
-          <span style={{fontSize:11,color:C.texto}}>Los primeros 3 proveedores concentran el {(top3total/TOTAL_2025*100).toFixed(1)}% del gasto total 2025. Se recomienda diversificar.</span>
+          ))}
         </div>
       </SecCard>
 
-      {/* Tabla completa */}
-      <SecCard titulo="Ranking Completo de Proveedores — 2025"
-        extra={
-          <div style={{display:"flex",gap:8}}>
-            <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="🔍 Buscar..."
-              style={{background:C.panel,border:`1px solid ${C.borde}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:C.texto,outline:"none",width:180}}/>
-            <select value={catFiltro} onChange={e=>setCatFiltro(e.target.value)}
-              style={{background:C.panel,border:`1px solid ${C.borde}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:C.texto,outline:"none"}}>
-              {cats.map(c=><option key={c}>{c}</option>)}
-            </select>
-          </div>
-        }>
+      <SecCard titulo="Tabla Estacional — Índice Mensual">
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead>
             <tr style={{background:C.panel}}>
-              {["#","Proveedor","Total 2025","% Participación","Categoría","Riesgo"].map(h=>(
-                <th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+              {["Mes","2023","2024","Promedio","Δ 2023→2024","Índice"].map(h=>(
+                <th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtrados.map((p,i) => {
-              const rank = RANKING_2025.indexOf(p) + 1;
-              const riesgo = rank<=3?"Crítico":rank<=5?"Alto":rank<=10?"Medio":"Bajo";
-              const riesgoCol = rank<=3?C.rojo:rank<=5?C.amber:rank<=10?C.verdeM:C.gris;
+            {estac.map((e,i) => {
+              const d   = ((e.v2024-e.v2023)/e.v2023*100);
+              const idx = Math.round(e.prom / (estac.reduce((a,b)=>a+b.prom,0)/12) * 100);
               return (
-                <tr key={i} style={{borderTop:`1px solid ${C.borde}`}}
-                  onMouseEnter={e=>e.currentTarget.style.background=C.hover}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <td style={{padding:"9px 12px",fontWeight:800,color:rank<=3?C.amber:C.gris,fontSize:12}}>{rank}</td>
-                  <td style={{padding:"9px 12px",fontSize:11.5,fontWeight:rank<=3?700:400,color:C.texto,maxWidth:280}}>
-                    <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      {rank===1&&"🥇 "}{rank===2&&"🥈 "}{rank===3&&"🥉 "}{p.nombre}
-                    </div>
-                  </td>
-                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:700,color:C.verde,fontSize:12}}>{fmt$(p.total)}</td>
-                  <td style={{padding:"9px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:60,height:5,background:C.panel,borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${p.pct/9.04*100}%`,background:rank<=3?C.amber:C.verde,borderRadius:3}}/>
+                <tr key={i} style={{borderTop:`1px solid ${C.borde}`,background:i===iMax?C.amberL:"transparent"}}
+                  onMouseEnter={ev=>ev.currentTarget.style.background=C.hover}
+                  onMouseLeave={ev=>ev.currentTarget.style.background=i===iMax?C.amberL:"transparent"}>
+                  <td style={{padding:"8px 12px",fontSize:12,fontWeight:700,color:C.texto}}>{e.mes}{i===iMax?" 🔺":i===iMin?" 🔻":""}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2023]}}>{fmt$(e.v2023)}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2024]}}>{fmt$(e.v2024)}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontWeight:700,fontSize:11,color:C.verde}}>{fmt$(e.prom)}</td>
+                  <td style={{padding:"8px 12px"}}><span style={{fontSize:11,fontWeight:700,color:d>0?C.rojo:C.verde}}>{d>0?"▲":"▼"} {Math.abs(d).toFixed(1)}%</span></td>
+                  <td style={{padding:"8px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:48,height:5,background:C.panel,borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${Math.min(idx/130*100,100)}%`,background:idx>100?C.rojo:C.verde,borderRadius:3}}/>
                       </div>
-                      <span style={{fontSize:11,color:C.gris,fontFamily:"monospace"}}>{p.pct.toFixed(2)}%</span>
+                      <span style={{fontSize:10.5,fontWeight:700,color:idx>110?C.rojo:idx<90?C.verde:C.gris}}>{idx}</span>
                     </div>
                   </td>
-                  <td style={{padding:"9px 12px"}}><Badge texto={p.cat} color={catColor(p.cat)}/></td>
-                  <td style={{padding:"9px 12px"}}><Badge texto={riesgo} color={riesgoCol}/></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        <div style={{marginTop:10,fontSize:10.5,color:C.gris,padding:"8px 12px",background:C.panel,borderRadius:8}}>
+          📌 Índice: 100 = promedio anual. Mayor a 100 = mes de alto gasto. Menor a 100 = mes de bajo gasto.
+        </div>
       </SecCard>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════
-//  TAB 4 — CATEGORÍAS
+//  TAB 3 — CATEGORÍAS
 // ══════════════════════════════════════════════════════════
 function TabCategorias() {
-  const [mes, setMes] = useState("ene");
-  const datos = CATS_2026.map(c => ({...c, actual: mes==="ene"?c.ene:c.feb})).sort((a,b)=>b.actual-a.actual);
-  const total = datos.reduce((a,b)=>a+b.actual,0);
-  const maxV  = datos[0].actual;
-
-  const CAT_ICONO = {
-    "Material de Empaque":"📦","Abonos y Fertilizantes":"🌱","Fungicidas":"🔬",
-    "Otros Insumos":"🔧","Mat. Flores Tinturadas":"🎨","Pesticidas e Insecticidas":"🧪",
-    "Repuestos y Accesorios":"⚙️","Ropa e Implementos Seg.":"🦺","Material Biológico":"🧬",
-    "Plásticos Invernaderos":"🏠","Herramientas Agrícolas":"🔨","Suministros Oficina":"📎",
-  };
-  const CAT_COLOR = [C.azul,C.verde,C.verdeM,C.amber,C.morado,C.rojo,C.azul,C.gris,C.verdeM,C.amber,C.verde,C.gris];
+  const [base, setBase] = useState("c2024");
+  const maxRef = Math.max(...CATS.map(c=>c.c2024));
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <div style={{display:"flex",gap:8}}>
-        {["ene","feb"].map(m => (
-          <button key={m} onClick={()=>setMes(m)}
-            style={{background:mes===m?C.verde:"transparent",border:`1px solid ${mes===m?C.verde:C.borde}`,borderRadius:18,padding:"5px 16px",fontSize:12,color:mes===m?"#fff":C.gris,cursor:"pointer",fontWeight:mes===m?700:400}}>
-            {m==="ene"?"Enero 2026":"Febrero 2026"}
-          </button>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+        {[
+          {i:"🥇",l:"Cat. #1 histórica",v:"Fertilizantes",s:"$1.72M en 2024 · 33.7%",c:C.verde},
+          {i:"📦",l:"Cat. #2",v:"Mat. Empaque",s:"$1.32M en 2024 · 25.8%",c:C.azul},
+          {i:"📈",l:"Mayor crecimiento",v:"Flores Tinturadas",s:"+100.9% de 2023 a 2024",c:C.rojo},
+          {i:"📉",l:"Mayor reducción",v:"Pesticidas",s:"-29.7% de 2023 a 2024",c:C.verde},
+        ].map((k,i)=>(
+          <div key={i} style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:12,padding:"16px 18px",borderTop:`3px solid ${k.c}`}}>
+            <div style={{fontSize:22,marginBottom:6}}>{k.i}</div>
+            <div style={{fontSize:10,color:C.gris,textTransform:"uppercase",marginBottom:2}}>{k.l}</div>
+            <div style={{fontSize:15,fontWeight:800,color:k.c}}>{k.v}</div>
+            <div style={{fontSize:11,color:C.gris,marginTop:2}}>{k.s}</div>
+          </div>
         ))}
-        <div style={{marginLeft:"auto",background:C.verdeL,borderRadius:8,padding:"5px 14px",fontSize:12,color:C.verde,fontWeight:700}}>
-          Total: {fmt$(total)}
-        </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:16}}>
-        <SecCard titulo={`Gasto por Categoría — ${mes==="ene"?"Enero":"Febrero"} 2026`}>
-          {datos.map((c,i) => (
-            <div key={i} style={{marginBottom:11}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,gap:8}}>
-                <span style={{fontSize:12,color:C.texto,display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{width:8,height:8,borderRadius:"50%",background:CAT_COLOR[i],display:"inline-block",flexShrink:0}}/>
-                  <span>{CAT_ICONO[c.cat]||"📋"} {c.cat}</span>
-                </span>
-                <div style={{display:"flex",gap:8,flexShrink:0}}>
-                  <span style={{fontSize:11.5,fontWeight:700,color:CAT_COLOR[i],fontFamily:"monospace"}}>{fmt$(c.actual)}</span>
-                  <span style={{fontSize:11,color:C.gris}}>{(c.actual/total*100).toFixed(1)}%</span>
-                </div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.gris}}>Resaltar año:</span>
+        {[{v:"c2023",l:"2023",a:2023},{v:"c2024",l:"2024",a:2024},{v:"c2026p",l:"2026 parcial",a:2026}].map(o=>(
+          <button key={o.v} onClick={()=>setBase(o.v)}
+            style={{background:base===o.v?COLORES_AÑO[o.a]:"transparent",border:`1px solid ${base===o.v?COLORES_AÑO[o.a]:C.borde}`,borderRadius:18,padding:"4px 12px",fontSize:11,color:base===o.v?"#fff":C.gris,cursor:"pointer",fontWeight:base===o.v?700:400}}>
+            {o.l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:16}}>
+        <SecCard titulo="Gasto por Categoría — Comparativo Multiañal">
+          {CATS.map((c,i) => (
+            <div key={i} style={{marginBottom:14}}>
+              <div style={{fontSize:11.5,fontWeight:600,color:C.texto,marginBottom:5,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:COLORES_CAT[i],display:"inline-block",flexShrink:0}}/>
+                {c.cat}
               </div>
-              <div style={{height:7,background:C.panel,borderRadius:4,overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${(c.actual/maxV)*100}%`,background:CAT_COLOR[i],borderRadius:4}}/>
-              </div>
+              {[{k:"c2023",a:2023},{k:"c2024",a:2024},{k:"c2026p",a:2026}].map(({k,a}) => {
+                const v = c[k];
+                if(!v) return null;
+                const w = Math.min((v/maxRef)*100,100);
+                return (
+                  <div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                    <span style={{fontSize:9.5,fontWeight:700,color:COLORES_AÑO[a],width:30,flexShrink:0}}>{a}</span>
+                    <div style={{flex:1,height:7,background:C.panel,borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${w}%`,background:COLORES_AÑO[a],borderRadius:3,opacity:k===base?1:0.35}}/>
+                    </div>
+                    <span style={{fontSize:10,fontFamily:"monospace",color:COLORES_AÑO[a],width:55,textAlign:"right",flexShrink:0,fontWeight:k===base?700:400}}>{fmt$(v)}</span>
+                  </div>
+                );
+              })}
             </div>
           ))}
         </SecCard>
 
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Comparativo ene vs feb */}
-          <SecCard titulo="Variación Enero vs Febrero">
-            {CATS_2026.map((c,i) => {
-              const delta = ((c.feb - c.ene) / c.ene * 100);
-              const col   = delta > 0 ? C.rojo : C.verde;
-              if (Math.abs(delta) < 1) return null;
+          <SecCard titulo="Variación % 2023 → 2024">
+            {CATS.map((c,i) => {
+              const d = ((c.c2024-c.c2023)/c.c2023*100);
               return (
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.borde}`}}>
-                  <span style={{fontSize:11,color:C.texto,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{CAT_ICONO[c.cat]||"📋"} {c.cat}</span>
-                  <span style={{fontSize:11.5,fontWeight:700,color:col,marginLeft:8,flexShrink:0}}>{delta>0?"▲":"▼"} {Math.abs(delta).toFixed(1)}%</span>
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${C.borde}`}}>
+                  <span style={{fontSize:11,color:C.texto,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{c.cat}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:8}}>
+                    <div style={{width:48,height:5,background:C.panel,borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${Math.min(Math.abs(d)/110*100,100)}%`,background:d>0?C.rojo:C.verde,borderRadius:3}}/>
+                    </div>
+                    <span style={{fontSize:11.5,fontWeight:800,color:d>0?C.rojo:C.verde,minWidth:52,textAlign:"right"}}>{d>0?"▲":"▼"} {Math.abs(d).toFixed(1)}%</span>
+                  </div>
                 </div>
               );
-            }).filter(Boolean)}
+            })}
           </SecCard>
 
-          {/* Top 3 categorías */}
-          <SecCard titulo="Top 3 Categorías">
-            {datos.slice(0,3).map((c,i) => (
-              <div key={i} style={{background:i===0?C.azulL:i===1?C.verdeL:C.amberL,borderRadius:10,padding:"12px 14px",marginBottom:8,border:`1px solid ${CAT_COLOR[i]}33`}}>
-                <div style={{fontSize:18,marginBottom:4}}>{CAT_ICONO[c.cat]}</div>
-                <div style={{fontSize:12,fontWeight:700,color:C.texto}}>{c.cat}</div>
-                <div style={{fontSize:18,fontWeight:800,color:CAT_COLOR[i],fontFamily:"monospace"}}>{fmt$(c.actual)}</div>
-                <div style={{fontSize:10,color:C.gris,marginTop:2}}>{(c.actual/total*100).toFixed(1)}% del gasto total</div>
-              </div>
-            ))}
+          <SecCard titulo="Estructura del Gasto 2024">
+            {CATS.slice(0,6).map((c,i) => {
+              const pct = (c.c2024/5106708*100);
+              return (
+                <div key={i} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                    <span style={{fontSize:11,color:C.texto}}>{c.cat}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:COLORES_CAT[i]}}>{pct.toFixed(1)}%</span>
+                  </div>
+                  <div style={{height:6,background:C.panel,borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct/33.7*100}%`,background:COLORES_CAT[i],borderRadius:3}}/>
+                  </div>
+                </div>
+              );
+            })}
           </SecCard>
         </div>
       </div>
@@ -555,61 +404,77 @@ function TabCategorias() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  TAB 5 — KPIs DE COMPRAS
+//  TAB 4 — COSTO POR TALLO
 // ══════════════════════════════════════════════════════════
-function TabKPIs() {
+function TabCosto() {
+  const max24 = Math.max(...COSTO_TALLO_2024);
+  const min24 = Math.min(...COSTO_TALLO_2024);
+  const prom24 = (COSTO_TALLO_2024.reduce((a,b)=>a+b,0)/12);
+  const prom26 = (COSTO_TALLO_2026.reduce((a,b)=>a+b,0)/COSTO_TALLO_2026.length);
+  const deltaP  = ((prom26-prom24)/prom24*100);
+
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <div style={{background:C.amberL,border:`1px solid ${C.amber}44`,borderRadius:10,padding:"12px 16px",fontSize:12,color:C.texto}}>
-        <span style={{fontWeight:700,color:C.amber}}>📌 Nota: </span>
-        Estos KPIs están basados en datos reales del Master File. Los indicadores de % compras planificadas vs urgentes y contratos próximos a vencer requieren campos adicionales en el sistema fuente.
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+        <KCard icono="💲" label="Prom. Costo/Tallo 2024" valor={`$${prom24.toFixed(4)}`} sub="Compras ÷ Tallos exportados" color={C.verde}/>
+        <KCard icono="📉" label="Mes más eficiente 2024" valor={`$${min24.toFixed(4)}`} sub={`${MESES[COSTO_TALLO_2024.indexOf(min24)]} 2024`} color={C.verde}/>
+        <KCard icono="📈" label="Mes más costoso 2024" valor={`$${max24.toFixed(4)}`} sub={`${MESES[COSTO_TALLO_2024.indexOf(max24)]} 2024`} color={C.rojo}/>
+        <KCard icono="💲" label="Prom. 2026 (Ene–Feb)" valor={`$${prom26.toFixed(4)}`} sub="vs 2024" color={deltaP<0?C.verde:C.rojo} delta={deltaP}/>
       </div>
 
-      {/* KPIs con datos reales */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        {[
-          {i:"💵",l:"Gasto Total Ene 2026",v:fmt$(KPIS_2026[0].compras),s:"Mes base 2026",c:C.verde},
-          {i:"💵",l:"Gasto Total Feb 2026",v:fmt$(KPIS_2026[1].compras),s:"+1.3% vs Enero",c:C.verde},
-          {i:"📈",l:"Gasto Acumulado 2026",v:fmt$(KPIS_2026.reduce((a,b)=>a+b.compras,0)),s:"Ene–Feb 2026",c:C.azul},
-          {i:"💲",l:"Costo/Tallo Ene",v:`$${KPIS_2026[0].costoTallo.toFixed(4)}`,s:"vs exportación",c:C.verdeM},
-          {i:"💲",l:"Costo/Tallo Feb",v:`$${KPIS_2026[1].costoTallo.toFixed(4)}`,s:"+4.1% vs Enero",c:C.verdeM},
-          {i:"🌹",l:"Tallos Export. Ene",v:fmtN(KPIS_2026[0].tallos),s:"Producción",c:C.verdeM},
-        ].map((k,i) => <KCard key={i} icono={k.i} label={k.l} valor={k.v} sub={k.s} color={k.c}/>)}
-      </div>
+      <SecCard titulo="Evolución Costo/Tallo Mensual 2024" sub="Costo total de compras dividido entre tallos exportados por mes">
+        <div style={{display:"flex",gap:6,alignItems:"flex-end",height:160,marginBottom:12}}>
+          {COSTO_TALLO_2024.map((v,i) => {
+            const h = (v/max24)*100;
+            const esPico=v===max24, esMin=v===min24;
+            const col = esPico?C.rojo:esMin?C.verde:C.azul;
+            return (
+              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <div style={{fontSize:9,fontWeight:700,color:col,fontFamily:"monospace"}}>${v.toFixed(3)}</div>
+                <div style={{width:"100%",height:`${h}%`,background:col,borderRadius:"4px 4px 0 0",minHeight:8,opacity:esPico||esMin?1:0.7}}/>
+                <div style={{fontSize:10,fontWeight:esPico||esMin?800:400,color:esPico?C.rojo:esMin?C.verde:C.gris}}>{MESES[i]}</div>
+                {esPico && <div style={{fontSize:8,color:C.rojo}}>PICO</div>}
+                {esMin  && <div style={{fontSize:8,color:C.verde}}>MIN</div>}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{display:"flex",gap:20,padding:"10px 14px",background:C.verdeL,borderRadius:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:C.verde,fontWeight:700}}>📊 Promedio 2024: ${prom24.toFixed(4)}/tallo</span>
+          <span style={{fontSize:11,color:C.gris}}>Variación pico–mín: ${(max24-min24).toFixed(4)} ({((max24-min24)/min24*100).toFixed(1)}%)</span>
+          <span style={{fontSize:11,color:deltaP<0?C.verde:C.rojo,fontWeight:700}}>2026 Ene–Feb: ${prom26.toFixed(4)}/tallo ({deltaP<0?"▼":"▲"}{Math.abs(deltaP).toFixed(1)}%)</span>
+        </div>
+      </SecCard>
 
-      {/* Costos por categoría / tallo */}
-      <SecCard titulo="Costo por Categoría / Tallo Exportado" sub="Calculado sobre tallos exportados Ene 2026">
+      <SecCard titulo="Costo por Categoría / Tallo Exportado — 2024 vs 2026" sub="Comparativo sobre tallos exportados del período">
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead>
             <tr style={{background:C.panel}}>
-              {["Categoría","Costo Total","Costo/Tallo Ene","Costo/Tallo Feb","Variación"].map(h=>(
-                <th key={h} style={{padding:"8px 14px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
+              {["Categoría","Total 2024","C/Tallo 2024","Total 2026 (p)","C/Tallo 2026","Variación"].map(h=>(
+                <th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {[
-              {cat:"Fertilizantes",ene:0.027953,feb:0.036442},
-              {cat:"Fungicidas",    ene:0.018986,feb:0.020914},
-              {cat:"Pesticidas",    ene:0.003817,feb:0.005024},
-              {cat:"Empaque",       ene:0.040650,feb:0.032599},
+              {cat:"Fertilizantes",   t24:1720766, ct24:0.0445, t26:276299, ct26:0.0318},
+              {cat:"Mat. Empaque",    t24:1319976, ct24:0.0362, t26:315290, ct26:0.0363},
+              {cat:"Fungicidas",      t24:815231,  ct24:0.0224, t26:171384, ct26:0.0197},
+              {cat:"Pesticidas",      t24:265965,  ct24:0.0063, t26:37931,  ct26:0.0044},
             ].map((r,i) => {
-              const delta = ((r.feb - r.ene) / r.ene * 100);
-              const metaCat = META_COSTO_TALLO;
-              const ok = r.ene <= metaCat * 2;
+              const d = ((r.ct26-r.ct24)/r.ct24*100);
               return (
                 <tr key={i} style={{borderTop:`1px solid ${C.borde}`}}
                   onMouseEnter={e=>e.currentTarget.style.background=C.hover}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <td style={{padding:"10px 14px",fontWeight:600,color:C.texto,fontSize:12}}>{r.cat}</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",color:C.verde,fontSize:12}}>
-                    {i===0?fmt$(CATS_2026[1].ene):i===1?fmt$(CATS_2026[2].ene):i===2?fmt$(CATS_2026[7].ene):fmt$(CATS_2026[4].ene)}
-                  </td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",fontWeight:700,color:C.verdeM,fontSize:12}}>${r.ene.toFixed(6)}</td>
-                  <td style={{padding:"10px 14px",fontFamily:"monospace",fontWeight:700,color:C.verdeM,fontSize:12}}>${r.feb.toFixed(6)}</td>
-                  <td style={{padding:"10px 14px"}}>
-                    <span style={{background:delta>0?C.rojoL:C.verdeL,color:delta>0?C.rojo:C.verde,padding:"2px 10px",borderRadius:10,fontWeight:700,fontSize:11}}>
-                      {delta>0?"▲":"▼"} {Math.abs(delta).toFixed(1)}%
+                  <td style={{padding:"9px 12px",fontSize:12,fontWeight:700}}>{r.cat}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2024]}}>{fmt$(r.t24)}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:700,color:COLORES_AÑO[2024],fontSize:12}}>${r.ct24.toFixed(4)}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:11,color:COLORES_AÑO[2026]}}>{fmt$(r.t26)}</td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:700,color:COLORES_AÑO[2026],fontSize:12}}>${r.ct26.toFixed(4)}</td>
+                  <td style={{padding:"9px 12px"}}>
+                    <span style={{background:d<0?C.verdeL:C.rojoL,color:d<0?C.verde:C.rojo,padding:"2px 10px",borderRadius:10,fontWeight:800,fontSize:11}}>
+                      {d<0?"▼":"▲"} {Math.abs(d).toFixed(1)}%
                     </span>
                   </td>
                 </tr>
@@ -618,24 +483,87 @@ function TabKPIs() {
           </tbody>
         </table>
       </SecCard>
+    </div>
+  );
+}
 
-      {/* Próximos indicadores */}
-      <SecCard titulo="🚧 KPIs Pendientes de Implementar">
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
-          {[
-            {i:"⏰",t:"Contratos próx. a vencer (90 días)",d:"Requiere campo 'Fecha Vencimiento' en OC. Columna 'Fecha Venc' existe pero vacía en datos actuales.",c:C.amber},
-            {i:"📋",t:"% Compras planificadas vs urgentes",d:"Requiere campo 'Tipo de Compra' (planificada/urgente) en el registro de OC.",c:C.amber},
-            {i:"🚚",t:"OTD / OTIF Proveedores",d:"Requiere registro de fecha prometida vs fecha real de entrega por proveedor.",c:C.rojo},
-            {i:"💰",t:"Ahorros generados (Savings)",d:"Requiere precio de referencia / precio negociado documentado por compra.",c:C.rojo},
-          ].map((d,i) => (
-            <div key={i} style={{background:C.panel,borderRadius:10,padding:"14px 16px",borderLeft:`4px solid ${d.c}`}}>
-              <div style={{fontSize:20,marginBottom:6}}>{d.i}</div>
-              <div style={{fontSize:12,fontWeight:700,color:C.texto,marginBottom:4}}>{d.t}</div>
-              <div style={{fontSize:10.5,color:C.gris,lineHeight:1.5}}>{d.d}</div>
-            </div>
-          ))}
-        </div>
+// ══════════════════════════════════════════════════════════
+//  TAB 5 — PROVEEDORES NUEVOS VS RECURRENTES
+// ══════════════════════════════════════════════════════════
+function TabProveedores() {
+  const [filtro, setFiltro] = useState("todos");
+  const recurrentes = PROVS.filter(p=>p.r2024&&p.r2023);
+  const nuevos = PROVS.filter(p=>!p.r2023);
+  const filtrados = filtro==="todos"?PROVS:filtro==="rec"?recurrentes:nuevos;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+        <KCard icono="🔄" label="Recurrentes 2023–2025" valor={recurrentes.length} sub={`${recurrentes.reduce((a,b)=>a+b.pct,0).toFixed(1)}% del gasto total`} color={C.verde}/>
+        <KCard icono="🆕" label="Nuevos en ranking 2025" valor={nuevos.length} sub="No estaban en top 2023" color={C.azul}/>
+        <KCard icono="📊" label="Total en ranking top 15" valor={PROVS.length} sub="Proveedores activos 2025" color={C.amber}/>
+        <KCard icono="⚠️" label="Gasto en top 3" valor={`${PROVS.slice(0,3).reduce((a,b)=>a+b.pct,0).toFixed(1)}%`} sub="Alta concentración histórica" color={C.rojo}/>
+      </div>
+
+      <div style={{display:"flex",gap:8}}>
+        {[{v:"todos",l:`Todos (${PROVS.length})`},{v:"rec",l:`🔄 Recurrentes (${recurrentes.length})`},{v:"new",l:`🆕 Nuevos en 2025 (${nuevos.length})`}].map(o=>(
+          <button key={o.v} onClick={()=>setFiltro(o.v)}
+            style={{background:filtro===o.v?C.verde:"transparent",border:`1px solid ${filtro===o.v?C.verde:C.borde}`,borderRadius:18,padding:"5px 14px",fontSize:11,color:filtro===o.v?"#fff":C.gris,cursor:"pointer",fontWeight:filtro===o.v?700:400}}>
+            {o.l}
+          </button>
+        ))}
+      </div>
+
+      <SecCard titulo="Análisis de Recurrencia — Top 15 Proveedores 2025">
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead>
+            <tr style={{background:C.panel}}>
+              {["#","Proveedor","Total 2025","% Part.","Categoría","En 2024","En 2023","Tipo"].map(h=>(
+                <th key={h} style={{padding:"8px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase",whiteSpace:"nowrap"}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtrados.map((p,i) => {
+              const rank = PROVS.indexOf(p)+1;
+              const tipo = p.r2024&&p.r2023?"Recurrente":!p.r2023?"Nuevo 2025":"Nuevo 2024";
+              const tipoCol = tipo==="Recurrente"?C.verde:tipo==="Nuevo 2025"?C.azul:C.amber;
+              return (
+                <tr key={i} style={{borderTop:`1px solid ${C.borde}`,background:tipo==="Nuevo 2025"?C.azulL+"66":"transparent"}}
+                  onMouseEnter={e=>e.currentTarget.style.background=C.hover}
+                  onMouseLeave={e=>e.currentTarget.style.background=tipo==="Nuevo 2025"?C.azulL+"66":"transparent"}>
+                  <td style={{padding:"9px 12px",fontWeight:800,color:rank<=3?C.amber:C.gris,fontSize:12}}>{rank}</td>
+                  <td style={{padding:"9px 12px",fontSize:11.5,maxWidth:260}}>
+                    <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:rank<=3?700:400}}>
+                      {rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":""} {p.n}
+                    </div>
+                  </td>
+                  <td style={{padding:"9px 12px",fontFamily:"monospace",fontWeight:700,color:C.verde,fontSize:12}}>{fmt$(p.t)}</td>
+                  <td style={{padding:"9px 12px",fontSize:11,color:C.gris}}>{p.pct.toFixed(2)}%</td>
+                  <td style={{padding:"9px 12px"}}><Badge texto={p.cat} color={C.verdeM}/></td>
+                  <td style={{padding:"9px 12px",textAlign:"center",fontSize:14}}>{p.r2024?"✅":"❌"}</td>
+                  <td style={{padding:"9px 12px",textAlign:"center",fontSize:14}}>{p.r2023?"✅":"❌"}</td>
+                  <td style={{padding:"9px 12px"}}><Badge texto={tipo} color={tipoCol}/></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </SecCard>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        {[
+          {i:"🔄",t:"Alta fidelidad de proveedores",d:`${recurrentes.length} de los top 15 son recurrentes en los 3 años analizados. Relaciones comerciales consolidadas.`,c:C.verde},
+          {i:"🆕",t:"Nuevos proveedores estratégicos",d:`${nuevos.length} proveedores nuevos en top 2025: Haifa Ecuador e Insuquimsa. Posible búsqueda de mejores condiciones.`,c:C.azul},
+          {i:"⚠️",t:"Riesgo de concentración",d:`Top 3 proveedores concentran el ${PROVS.slice(0,3).reduce((a,b)=>a+b.pct,0).toFixed(1)}% del gasto. Los 3 son recurrentes históricos — dependencia estructural.`,c:C.rojo},
+        ].map((d,i)=>(
+          <div key={i} style={{background:C.card,border:`1px solid ${C.borde}`,borderRadius:12,padding:"16px 18px",borderLeft:`4px solid ${d.c}`}}>
+            <div style={{fontSize:24,marginBottom:8}}>{d.i}</div>
+            <div style={{fontSize:12,fontWeight:700,color:d.c,marginBottom:4}}>{d.t}</div>
+            <div style={{fontSize:11,color:C.gris,lineHeight:1.6}}>{d.d}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -644,40 +572,37 @@ function TabKPIs() {
 //  APP
 // ══════════════════════════════════════════════════════════
 export default function App() {
-  const [tab, setTab] = useState("resumen");
+  const [tab, setTab] = useState("tendencias");
   const vistas = {
-    resumen:     <TabResumen/>,
-    gasto:       <TabGasto/>,
-    proveedores: <TabProveedores/>,
-    categorias:  <TabCategorias/>,
-    kpis:        <TabKPIs/>,
+    tendencias: <TabTendencias/>,
+    estacional: <TabEstacional/>,
+    categorias: <TabCategorias/>,
+    costo:      <TabCosto/>,
+    proveedores:<TabProveedores/>,
   };
 
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Inter','Segoe UI',sans-serif",color:C.texto}}>
-      {/* Header */}
-      <div style={{background:C.verde,padding:"14px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{background:`linear-gradient(135deg,#2D5016 0%,#4A7C3F 100%)`,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:28}}>🌿</div>
+          <span style={{fontSize:28}}>🌿</span>
           <div>
-            <div style={{fontSize:16,fontWeight:800,color:"#fff"}}>Hoja Verde 360° — Compras</div>
-            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>DASHBOARD EJECUTIVO DE PROCUREMENT</div>
+            <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>Hoja Verde 360° — Análisis Avanzado de Compras</div>
+            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>DATOS REALES MASTER FILE · 2022–2026</div>
           </div>
         </div>
         <div style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</div>
       </div>
 
-      {/* Tabs */}
-      <div style={{background:C.panel,borderBottom:`1px solid ${C.borde}`,padding:"0 32px",display:"flex",gap:4}}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{background:"transparent",border:"none",borderBottom:`3px solid ${tab===t.id?C.verde:"transparent"}`,padding:"12px 16px",cursor:"pointer",fontSize:12.5,fontWeight:tab===t.id?700:400,color:tab===t.id?C.verde:C.gris,display:"flex",alignItems:"center",gap:6,transition:"all 0.15s"}}>
+      <div style={{background:C.panel,borderBottom:`1px solid ${C.borde}`,padding:"0 32px",display:"flex",gap:2,overflowX:"auto"}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{background:"transparent",border:"none",borderBottom:`3px solid ${tab===t.id?C.verde:"transparent"}`,padding:"12px 14px",cursor:"pointer",fontSize:12,fontWeight:tab===t.id?700:400,color:tab===t.id?C.verde:C.gris,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
             {t.icono} {t.label}
           </button>
         ))}
       </div>
 
-      {/* Content */}
       <div style={{padding:"28px 32px 48px",maxWidth:1400,margin:"0 auto"}}>
         {vistas[tab]}
       </div>
@@ -685,9 +610,8 @@ export default function App() {
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
         ::-webkit-scrollbar{width:5px;height:5px;}
-        ::-webkit-scrollbar-track{background:${C.bg};}
-        ::-webkit-scrollbar-thumb{background:${C.borde};border-radius:4px;}
-        select option{background:${C.panel};color:${C.texto};}
+        ::-webkit-scrollbar-track{background:#FAF5EC;}
+        ::-webkit-scrollbar-thumb{background:#D6C9B0;border-radius:4px;}
       `}</style>
     </div>
   );
