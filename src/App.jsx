@@ -241,7 +241,7 @@ function TabPresupuesto() {
                         : <div style={{flex:1,height:"8%",background:C.panel,borderRadius:"3px 3px 0 0",border:`1px dashed ${C.borde}`}}/>
                       }
                     </div>
-                    <div style={{fontSize:9.5,color:C.gris,textAlign:"center"}}>{MESES_LABELS[i]}</div>
+                    <div style={{fontSize:9.5,color:C.gris,textAlign:"center"}}>{MESES[i]}</div>
                   </div>
                 );
               })}
@@ -265,7 +265,7 @@ function TabPresupuesto() {
                 {datos.map((d,i)=>{
                   if(!d.ejec && d.ejec!==0) return (
                     <tr key={i} style={{borderTop:`1px solid ${C.borde}`,opacity:0.4}}>
-                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES_LABELS[i]}</td>
+                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES[i]}</td>
                       <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:C.azul}}>{fmt$(d.ppto)}</td>
                       <td colSpan={4} style={{padding:"7px 12px",fontSize:11,color:C.gris}}>Sin datos</td>
                     </tr>
@@ -276,7 +276,7 @@ function TabPresupuesto() {
                     <tr key={i} style={{borderTop:`1px solid ${C.borde}`,background:d.pct>105?C.rojoL+"66":d.pct<=95?C.verdeL+"66":"transparent"}}
                       onMouseEnter={e=>e.currentTarget.style.background=C.hover}
                       onMouseLeave={e=>e.currentTarget.style.background=d.pct>105?C.rojoL+"66":d.pct<=95?C.verdeL+"66":"transparent"}>
-                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES_LABELS[i]}</td>
+                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES[i]}</td>
                       <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:C.azul}}>{fmt$(d.ppto)}</td>
                       <td style={{padding:"7px 12px",fontFamily:"monospace",fontWeight:700,fontSize:11,color:col}}>{fmt$(d.ejec)}</td>
                       <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:diff>0?C.rojo:C.verde,fontWeight:700}}>{diff>0?"+":""}{fmt$(diff)}</td>
@@ -337,7 +337,7 @@ function TabPresupuesto() {
                   })}
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
-                  {MESES_LABELS.map((m,i)=><span key={i} style={{flex:1,fontSize:8,color:C.gris,textAlign:"center"}}>{m}</span>)}
+                  {MESES.map((m,i)=><span key={i} style={{flex:1,fontSize:8,color:C.gris,textAlign:"center"}}>{m}</span>)}
                 </div>
               </div>
             );
