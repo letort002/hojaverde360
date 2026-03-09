@@ -1040,7 +1040,6 @@ function Reporte({meses, ordenes, kpis}) {
 //  APP PRINCIPAL
 // ─────────────────────────────────────────────
 export default function App() {
-  const [autenticado, setAutenticado] = useGuardar("hv360_auth", false);
   const [meses, setMeses] = useGuardar("hv360_meses", {"Enero 2026": PROVEEDORES_ENERO});
   const [ordenes, setOrdenes] = useGuardar("hv360_ordenes_v2", ocSemilla());
   const [kpis, setKpis] = useGuardar("hv360_kpis_v2", kpisSemilla());
@@ -1048,7 +1047,6 @@ export default function App() {
   const [mostrarAlertas, setMostrarAlertas] = useState(false);
   const alertas = useAlertas(ordenes);
 
-  if (!autenticado) return <Login onLogin={() => setAutenticado(true)} />;
 
   const nav = [
     {id:"dashboard", label:"Dashboard", icono:"⬛"},
@@ -1101,7 +1099,6 @@ export default function App() {
             <div style={{fontSize:11.5, fontWeight:600, color:TEXTO}}>José Vargas</div>
             <div style={{fontSize:10, color:GRIS}}>Supply Chain</div>
           </div>
-          <button onClick={() => setAutenticado(false)} title="Cerrar sesión" style={{marginLeft:"auto", background:"none", border:"none", color:GRIS, cursor:"pointer", fontSize:14}}>🚪</button>
         </div>
       </aside>
 
