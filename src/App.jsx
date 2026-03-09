@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const C = {
   bg:"#FAF5EC", panel:"#F0E8D8", card:"#FFFFFF", borde:"#D6C9B0",
@@ -106,7 +106,247 @@ const TABS = [
   {id:"categorias",  label:"Categorías Año a Año",  icono:"📦"},
   {id:"costo",       label:"Costo por Tallo",       icono:"💲"},
   {id:"proveedores", label:"Proveedores Nuevos vs Recurrentes", icono:"🏭"},
+  {id:"presupuesto", label:"Ejec. vs Presupuesto",  icono:"🎯"},
 ];
+
+// ══════════════════════════════════════════════════════════
+//  DATOS PRESUPUESTO — Agroquímicos & Fertilizantes
+//  Fuente: GHV_Ejecución_vs_Ppto_2024-2026
+// ══════════════════════════════════════════════════════════
+const PPTO_GHV = {
+  2024: [
+    {ppto:204869,ejec:224640,pct:105.5},
+    {ppto:204869,ejec:205479,pct:96.5},
+    {ppto:204869,ejec:195035,pct:91.6},
+    {ppto:204869,ejec:209919,pct:98.5},
+    {ppto:204869,ejec:211057,pct:99.1},
+    {ppto:204869,ejec:191200,pct:89.8},
+    {ppto:204869,ejec:206533,pct:97.0},
+    {ppto:185708,ejec:198600,pct:103.9},
+    {ppto:185708,ejec:179173,pct:96.5},
+    {ppto:207677,ejec:207638,pct:97.5},
+    {ppto:207677,ejec:180771,pct:83.8},
+    {ppto:204869,ejec:214444,pct:100.7},
+  ],
+  2025: [
+    {ppto:187682,ejec:215060,pct:114.2},
+    {ppto:187022,ejec:206989,pct:109.9},
+    {ppto:186899,ejec:211670,pct:112.3},
+    {ppto:186432,ejec:221389,pct:121.1},
+    {ppto:187682,ejec:194283,pct:103.1},
+    {ppto:187022,ejec:160984,pct:85.5},
+    {ppto:198798,ejec:181930,pct:91.5},
+    {ppto:205530,ejec:163301,pct:79.5},
+    {ppto:205530,ejec:183555,pct:89.3},
+    {ppto:205530,ejec:215475,pct:104.8},
+    {ppto:205530,ejec:199450,pct:97.0},
+    {ppto:207672,ejec:203941,pct:99.2},
+  ],
+  2026: [
+    {ppto:207672,ejec:217013,pct:104.5},
+    {ppto:207672,ejec:101030,pct:48.6},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+    {ppto:207672,ejec:null,pct:null},
+  ],
+};
+
+// Por finca 2025 (completo)
+const PPTO_FINCAS_2025 = {
+  HV: [{ppto:66708,ejec:70999,pct:106.4},{ppto:66708,ejec:71668,pct:107.4},{ppto:66708,ejec:70513,pct:105.7},{ppto:64746,ejec:74906,pct:115.7},{ppto:66708,ejec:66541,pct:99.8},{ppto:66708,ejec:49875,pct:74.8},{ppto:71196,ejec:59481,pct:83.5},{ppto:71196,ejec:56571,pct:79.5},{ppto:71196,ejec:56199,pct:78.9},{ppto:71196,ejec:74951,pct:105.3},{ppto:71196,ejec:68888,pct:96.8},{ppto:71196,ejec:65505,pct:92.0}],
+  FM: [{ppto:50830,ejec:62945,pct:123.8},{ppto:50830,ejec:58606,pct:115.3},{ppto:49335,ejec:60815,pct:123.3},{ppto:50830,ejec:59724,pct:117.5},{ppto:50830,ejec:49956,pct:98.3},{ppto:50830,ejec:47265,pct:93.0},{ppto:53754,ejec:54043,pct:100.5},{ppto:53754,ejec:41837,pct:82.3},{ppto:53754,ejec:52138,pct:97.0},{ppto:53754,ejec:58535,pct:108.9},{ppto:53754,ejec:55000,pct:102.3},{ppto:53754,ejec:60000,pct:111.6}],
+  JG: [{ppto:46648,ejec:53733,pct:115.2},{ppto:45276,ejec:49996,pct:110.4},{ppto:46648,ejec:51891,pct:111.2},{ppto:46648,ejec:59455,pct:127.5},{ppto:46648,ejec:49660,pct:106.5},{ppto:45276,ejec:38368,pct:84.7},{ppto:46648,ejec:42849,pct:91.9},{ppto:46648,ejec:38688,pct:82.9},{ppto:46648,ejec:44220,pct:94.8},{ppto:46648,ejec:49680,pct:106.5},{ppto:46648,ejec:45000,pct:96.5},{ppto:46648,ejec:50000,pct:107.2}],
+  EC: [{ppto:23496,ejec:27383,pct:116.5},{ppto:24208,ejec:26719,pct:110.4},{ppto:24208,ejec:28450,pct:117.5},{ppto:24208,ejec:27305,pct:112.8},{ppto:23496,ejec:28127,pct:119.7},{ppto:24208,ejec:25476,pct:105.2},{ppto:27200,ejec:25558,pct:94.0},{ppto:33932,ejec:26204,pct:77.2},{ppto:33932,ejec:30999,pct:91.4},{ppto:33932,ejec:32309,pct:95.2},{ppto:33932,ejec:30562,pct:90.1},{ppto:36224,ejec:28436,pct:78.5}],
+};
+
+// ── Tab Presupuesto ───────────────────────────────────────
+function TabPresupuesto() {
+  const [año, setAño]   = useState(2025);
+  const [vista, setVista] = useState("ghv"); // ghv | fincas
+  const datos = PPTO_GHV[año];
+
+  const totalPpto = datos.reduce((a,b)=>a+(b.ppto||0),0);
+  const totalEjec = datos.filter(d=>d.ejec!=null).reduce((a,b)=>a+(b.ejec||0),0);
+  const mesesEjec = datos.filter(d=>d.ejec!=null).length;
+  const pptoParcial = datos.slice(0,mesesEjec).reduce((a,b)=>a+(b.ppto||0),0);
+  const pctGlobal  = pptoParcial>0 ? (totalEjec/pptoParcial*100) : 0;
+  const maxBar = Math.max(...datos.map(d=>Math.max(d.ppto||0,d.ejec||0)));
+
+  const semaforo = (pct) => {
+    if (pct==null) return C.gris;
+    if (pct <= 95)  return C.verde;
+    if (pct <= 105) return C.amber;
+    return C.rojo;
+  };
+  const semaforoLabel = (pct) => {
+    if (pct==null) return "—";
+    if (pct <= 95)  return "✅ Bajo ppto";
+    if (pct <= 105) return "🟡 En rango";
+    return "🔴 Sobre ppto";
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+        <KCard icono="🎯" label={`Presupuesto ${año}`} valor={fmt$(totalPpto)} sub="Agroquím. + Fertilizantes" color={C.azul}/>
+        <KCard icono="💸" label={`Ejecución ${año}`} valor={fmt$(totalEjec)} sub={`${mesesEjec} meses registrados`} color={C.verde}/>
+        <KCard icono="📊" label="% Cumplimiento" valor={`${pctGlobal.toFixed(1)}%`} sub={`vs presupuesto acumulado`} color={semaforo(pctGlobal)}/>
+        <KCard icono="💰" label="Diferencia vs Ppto" valor={fmt$(totalEjec-pptoParcial)} sub={totalEjec>pptoParcial?"▲ Sobre presupuesto":"▼ Bajo presupuesto"} color={totalEjec>pptoParcial?C.rojo:C.verde}/>
+      </div>
+
+      {/* Selectores */}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.gris}}>Año:</span>
+        {[2024,2025,2026].map(a=>(
+          <button key={a} onClick={()=>setAño(a)}
+            style={{background:año===a?COLORES_AÑO[a]:"transparent",border:`1px solid ${año===a?COLORES_AÑO[a]:C.borde}`,borderRadius:18,padding:"4px 14px",fontSize:11,color:año===a?"#fff":C.gris,cursor:"pointer",fontWeight:año===a?700:400}}>
+            {a}
+          </button>
+        ))}
+        <span style={{fontSize:11,color:C.gris,marginLeft:12}}>Vista:</span>
+        {[{v:"ghv",l:"GHV Total"},{v:"fincas",l:"Por Finca"}].map(o=>(
+          <button key={o.v} onClick={()=>setVista(o.v)}
+            style={{background:vista===o.v?C.verde:"transparent",border:`1px solid ${vista===o.v?C.verde:C.borde}`,borderRadius:18,padding:"4px 14px",fontSize:11,color:vista===o.v?"#fff":C.gris,cursor:"pointer",fontWeight:vista===o.v?700:400}}>
+            {o.l}
+          </button>
+        ))}
+      </div>
+
+      {vista==="ghv" ? (
+        <>
+          {/* Gráfico barras dobles */}
+          <SecCard titulo={`Ejecución vs Presupuesto Mensual ${año} — GHV Total`} sub="Agroquímicos + Fertilizantes · Datos reales del archivo de ejecución">
+            <div style={{display:"flex",gap:4,alignItems:"flex-end",height:180,marginBottom:12}}>
+              {datos.map((d,i)=>{
+                const hp = ((d.ppto||0)/maxBar)*100;
+                const he = d.ejec!=null ? (d.ejec/maxBar)*100 : 0;
+                const col = semaforo(d.pct);
+                return (
+                  <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                    {d.pct!=null && <div style={{fontSize:8,fontWeight:700,color:col}}>{d.pct.toFixed(0)}%</div>}
+                    <div style={{width:"100%",display:"flex",gap:1,alignItems:"flex-end",height:160}}>
+                      {/* Barra presupuesto */}
+                      <div style={{flex:1,height:`${hp}%`,background:C.azul+"55",borderRadius:"3px 3px 0 0",minHeight:4,border:`1px solid ${C.azul}88`}}/>
+                      {/* Barra ejecución */}
+                      {d.ejec!=null
+                        ? <div style={{flex:1,height:`${he}%`,background:col,borderRadius:"3px 3px 0 0",minHeight:4,opacity:0.9}}/>
+                        : <div style={{flex:1,height:"8%",background:C.panel,borderRadius:"3px 3px 0 0",border:`1px dashed ${C.borde}`}}/>
+                      }
+                    </div>
+                    <div style={{fontSize:9.5,color:C.gris,textAlign:"center"}}>{MESES_LABELS[i]}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Leyenda */}
+            <div style={{display:"flex",gap:16,marginBottom:12,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:14,height:10,background:C.azul+"55",border:`1px solid ${C.azul}88`,borderRadius:2}}/><span style={{fontSize:10.5,color:C.gris}}>Presupuesto</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:14,height:10,background:C.verde,borderRadius:2}}/><span style={{fontSize:10.5,color:C.gris}}>Ejecución ≤95% (bajo ppto)</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:14,height:10,background:C.amber,borderRadius:2}}/><span style={{fontSize:10.5,color:C.gris}}>Ejecución 95–105% (en rango)</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:14,height:10,background:C.rojo,borderRadius:2}}/><span style={{fontSize:10.5,color:C.gris}}>Ejecución &gt;105% (sobre ppto)</span></div>
+            </div>
+
+            {/* Tabla detalle */}
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr style={{background:C.panel}}>
+                {["Mes","Presupuesto","Ejecución","Diferencia","% Cumpl.","Estado"].map(h=>(
+                  <th key={h} style={{padding:"7px 12px",textAlign:"left",fontSize:10,fontWeight:600,color:C.gris,textTransform:"uppercase"}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {datos.map((d,i)=>{
+                  if(!d.ejec && d.ejec!==0) return (
+                    <tr key={i} style={{borderTop:`1px solid ${C.borde}`,opacity:0.4}}>
+                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES_LABELS[i]}</td>
+                      <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:C.azul}}>{fmt$(d.ppto)}</td>
+                      <td colSpan={4} style={{padding:"7px 12px",fontSize:11,color:C.gris}}>Sin datos</td>
+                    </tr>
+                  );
+                  const diff = d.ejec - d.ppto;
+                  const col  = semaforo(d.pct);
+                  return (
+                    <tr key={i} style={{borderTop:`1px solid ${C.borde}`,background:d.pct>105?C.rojoL+"66":d.pct<=95?C.verdeL+"66":"transparent"}}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.hover}
+                      onMouseLeave={e=>e.currentTarget.style.background=d.pct>105?C.rojoL+"66":d.pct<=95?C.verdeL+"66":"transparent"}>
+                      <td style={{padding:"7px 12px",fontSize:12,fontWeight:700}}>{MESES_LABELS[i]}</td>
+                      <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:C.azul}}>{fmt$(d.ppto)}</td>
+                      <td style={{padding:"7px 12px",fontFamily:"monospace",fontWeight:700,fontSize:11,color:col}}>{fmt$(d.ejec)}</td>
+                      <td style={{padding:"7px 12px",fontFamily:"monospace",fontSize:11,color:diff>0?C.rojo:C.verde,fontWeight:700}}>{diff>0?"+":""}{fmt$(diff)}</td>
+                      <td style={{padding:"7px 12px",fontWeight:800,fontSize:12,color:col}}>{d.pct.toFixed(1)}%</td>
+                      <td style={{padding:"7px 12px"}}><Badge texto={semaforoLabel(d.pct)} color={col}/></td>
+                    </tr>
+                  );
+                })}
+                {/* Total */}
+                <tr style={{borderTop:`2px solid ${C.verde}`,background:C.verdeL}}>
+                  <td style={{padding:"8px 12px",fontSize:12,fontWeight:800,color:C.verde}}>TOTAL {año}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:C.azul}}>{fmt$(pptoParcial)}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:semaforo(pctGlobal)}}>{fmt$(totalEjec)}</td>
+                  <td style={{padding:"8px 12px",fontFamily:"monospace",fontWeight:800,fontSize:12,color:totalEjec>pptoParcial?C.rojo:C.verde}}>{totalEjec>pptoParcial?"+":""}{fmt$(totalEjec-pptoParcial)}</td>
+                  <td style={{padding:"8px 12px",fontWeight:800,fontSize:13,color:semaforo(pctGlobal)}}>{pctGlobal.toFixed(1)}%</td>
+                  <td style={{padding:"8px 12px"}}><Badge texto={semaforoLabel(pctGlobal)} color={semaforo(pctGlobal)}/></td>
+                </tr>
+              </tbody>
+            </table>
+          </SecCard>
+        </>
+      ) : (
+        /* Vista por finca — solo 2025 */
+        <SecCard titulo="Ejecución vs Presupuesto por Finca — 2025" sub="Agroquímicos + Fertilizantes · 4 fincas Grupo Hoja Verde">
+          {["HV","FM","JG","EC"].map((finca,fi)=>{
+            const fd = PPTO_FINCAS_2025[finca];
+            const totalP = fd.reduce((a,b)=>a+b.ppto,0);
+            const totalE = fd.reduce((a,b)=>a+b.ejec,0);
+            const pctF   = (totalE/totalP*100);
+            const col    = semaforo(pctF);
+            return (
+              <div key={finca} style={{marginBottom:16,paddingBottom:16,borderBottom:fi<3?`1px solid ${C.borde}`:"none"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:36,height:36,borderRadius:8,background:col,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#fff"}}>{finca}</div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:800,color:C.texto}}>{finca==="HV"?"Hojaverde":finca==="FM"?"Flormare":finca==="JG"?"Joygardens":"El Carmen"}</div>
+                      <div style={{fontSize:10.5,color:C.gris}}>Ppto: {fmt$(totalP)} · Ejec: {fmt$(totalE)}</div>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:18,fontWeight:800,color:col}}>{pctF.toFixed(1)}%</div>
+                    <Badge texto={semaforoLabel(pctF)} color={col}/>
+                  </div>
+                </div>
+                {/* Mini barras mensuales */}
+                <div style={{display:"flex",gap:3,alignItems:"flex-end",height:60}}>
+                  {fd.map((d,i)=>{
+                    const maxM = Math.max(...fd.map(x=>Math.max(x.ppto,x.ejec)));
+                    const hp=(d.ppto/maxM)*100, he=(d.ejec/maxM)*100;
+                    const cM=semaforo(d.pct);
+                    return (
+                      <div key={i} style={{flex:1,display:"flex",gap:1,alignItems:"flex-end",height:50}}>
+                        <div style={{flex:1,height:`${hp}%`,background:C.azul+"44",borderRadius:"2px 2px 0 0",minHeight:3}}/>
+                        <div style={{flex:1,height:`${he}%`,background:cM,borderRadius:"2px 2px 0 0",minHeight:3,opacity:0.85}}/>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
+                  {MESES_LABELS.map((m,i)=><span key={i} style={{flex:1,fontSize:8,color:C.gris,textAlign:"center"}}>{m}</span>)}
+                </div>
+              </div>
+            );
+          })}
+        </SecCard>
+      )}
+    </div>
+  );
+}
 
 // ══════════════════════════════════════════════════════════
 //  TAB 1 — TENDENCIAS
@@ -569,31 +809,147 @@ function TabProveedores() {
 }
 
 // ══════════════════════════════════════════════════════════
+//  PARSER EXCEL — carga xlsx desde CDN dinámicamente
+// ══════════════════════════════════════════════════════════
+function cargarXLSX() {
+  return new Promise((resolve) => {
+    if (window.XLSX) { resolve(window.XLSX); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => resolve(window.XLSX);
+    document.head.appendChild(s);
+  });
+}
+
+async function parsearExcel(file) {
+  const XLSX = await cargarXLSX();
+  const buf  = await file.arrayBuffer();
+  const wb   = XLSX.read(buf, { type:"array", cellDates:true });
+  const override = {};
+  for (const año of [2023,2024,2025,2026]) {
+    const nombre = `COMPRAS ${año}`;
+    if (!wb.SheetNames.includes(nombre)) continue;
+    const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], {defval:null});
+    if (!filas.length) continue;
+    const porMes = Array(12).fill(null);
+    const porCat = {}, porProv = {};
+    let total = 0;
+    for (const f of filas) {
+      const monto = parseFloat(f["Producto"])||0;
+      if (!monto) continue;
+      total += monto;
+      const fecha = f["Fecha C."];
+      if (fecha) {
+        const d = fecha instanceof Date ? fecha : new Date(fecha);
+        if (!isNaN(d) && d.getFullYear()===año) {
+          const i = d.getMonth();
+          porMes[i] = (porMes[i]||0) + monto;
+        }
+      }
+      const cat  = f["Categoría Padre"] ? String(f["Categoría Padre"]).trim() : "SIN CATEGORÍA";
+      porCat[cat] = (porCat[cat]||0) + monto;
+      const prov = f["Proveedor"] ? String(f["Proveedor"]).trim() : "SIN PROVEEDOR";
+      porProv[prov] = (porProv[prov]||0) + monto;
+    }
+    override[año] = { total, mensuales:porMes, porCat, porProv };
+  }
+  return override;
+}
+
+// ══════════════════════════════════════════════════════════
 //  APP
 // ══════════════════════════════════════════════════════════
 export default function App() {
-  const [tab, setTab] = useState("tendencias");
+  const [tab, setTab]           = useState("tendencias");
+  const [archivo, setArchivo]   = useState(null);   // nombre del archivo cargado
+  const [cargando, setCargando] = useState(false);
+  const [toast, setToast]       = useState("");
+  const [overrideData, setOverrideData] = useState(null); // datos del Excel subido
+  const inputRef = useRef();
+
+  function mostrarToast(msg) {
+    setToast(msg);
+    setTimeout(()=>setToast(""),3500);
+  }
+
+  async function procesarArchivo(file) {
+    if (!file || !file.name.match(/\.(xlsx|xls)$/i)) {
+      mostrarToast("⚠️ Solo se aceptan archivos .xlsx o .xls");
+      return;
+    }
+    setCargando(true);
+    try {
+      const datos = await parsearExcel(file);
+      const años  = Object.keys(datos);
+      if (!años.length) { mostrarToast("⚠️ No se encontraron hojas COMPRAS en el archivo"); setCargando(false); return; }
+      setOverrideData(datos);
+      setArchivo(file.name);
+      setCargando(false);
+      mostrarToast(`✅ Datos actualizados desde ${file.name}`);
+    } catch(err) {
+      mostrarToast("⚠️ Error: " + err.message);
+      setCargando(false);
+    }
+  }
+
+  // Si hay datos cargados desde Excel, inyectarlos en las constantes globales
+  // mediante props que cada tab puede recibir opcionalmente
+  const datosOverride = overrideData;
+
   const vistas = {
-    tendencias: <TabTendencias/>,
-    estacional: <TabEstacional/>,
-    categorias: <TabCategorias/>,
+    tendencias: <TabTendencias override={datosOverride}/>,
+    estacional: <TabEstacional override={datosOverride}/>,
+    categorias: <TabCategorias override={datosOverride}/>,
     costo:      <TabCosto/>,
     proveedores:<TabProveedores/>,
+    presupuesto:<TabPresupuesto/>,
   };
 
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Inter','Segoe UI',sans-serif",color:C.texto}}>
-      <div style={{background:`linear-gradient(135deg,#2D5016 0%,#4A7C3F 100%)`,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,#2D5016 0%,#4A7C3F 100%)`,padding:"14px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:28}}>🌿</span>
           <div>
             <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>Hoja Verde 360° — Análisis Avanzado de Compras</div>
-            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>DATOS REALES MASTER FILE · 2022–2026</div>
+            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>
+              {archivo ? `📂 ${archivo}` : "DATOS BASE 2022–2026 · MASTER FILE"}
+            </div>
           </div>
         </div>
-        <div style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {archivo && (
+            <button onClick={()=>{setOverrideData(null);setArchivo(null);mostrarToast("↩️ Datos base restaurados");}}
+              style={{background:"#ffffff15",border:"1px solid #ffffff33",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>
+              ↩️ Restaurar datos base
+            </button>
+          )}
+          <button onClick={()=>inputRef.current.click()} disabled={cargando}
+            style={{background:cargando?"#ffffff22":"#ffffff",border:"none",borderRadius:8,padding:"7px 16px",color:C.verde,fontSize:12,fontWeight:800,cursor:cargando?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {cargando?"⏳ Procesando...":"📂 Actualizar con nuevo Excel"}
+          </button>
+          <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{display:"none"}}
+            onChange={e=>{procesarArchivo(e.target.files[0]); e.target.value="";}}/>
+          <span style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</span>
+        </div>
       </div>
 
+      {/* Toast */}
+      {toast && (
+        <div style={{position:"fixed",top:16,right:16,background:C.verde,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px #0005"}}>
+          {toast}
+        </div>
+      )}
+
+      {/* Banner datos fuente */}
+      {archivo && (
+        <div style={{background:C.verdeL,borderBottom:`1px solid ${C.borde}`,padding:"6px 32px",fontSize:11,color:C.verde,fontWeight:600}}>
+          ✅ Mostrando datos de: <strong>{archivo}</strong> · Los datos base siguen disponibles si restauras.
+        </div>
+      )}
+
+      {/* Tabs */}
       <div style={{background:C.panel,borderBottom:`1px solid ${C.borde}`,padding:"0 32px",display:"flex",gap:2,overflowX:"auto"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
