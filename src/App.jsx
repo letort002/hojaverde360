@@ -1,9 +1,48 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 /* ═══════════════════════════════════════════════════════════
    HOJA VERDE 360° — SISTEMA DE PROCUREMENT
    Programa completo con persistencia, módulos y gestión real
 ═══════════════════════════════════════════════════════════ */
+
+
+// ── Login Screen ─────────────────────────────────────────
+const APP_PASSWORD = "hojaverde2026";
+
+function Login({onLogin}) {
+  const [pass, setPass] = React.useState("");
+  const [err, setErr] = React.useState("");
+  const [shake, setShake] = React.useState(false);
+  function submit(e) {
+    e.preventDefault();
+    if (pass === APP_PASSWORD) { onLogin(); }
+    else { setErr("Contraseña incorrecta"); setShake(true); setTimeout(()=>setShake(false), 500); }
+  }
+  return (
+    <div style={{background:"#0F1A0F",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif"}}>
+      <div style={{width:"100%",maxWidth:380,padding:"0 24px"}}>
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{fontSize:52,marginBottom:16}}>🌿</div>
+          <h1 style={{color:"#E8F5E9",fontSize:26,fontWeight:800,margin:"0 0 6px"}}>Hoja Verde 360°</h1>
+          <p style={{color:"#6B8F6B",fontSize:13,margin:0}}>Sistema de Procurement</p>
+        </div>
+        <form onSubmit={submit} style={{animation:shake?"shake 0.4s ease":"none"}}>
+          <div style={{background:"#1A271A",border:"1px solid #2A3D2A",borderRadius:16,padding:"28px",display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <label style={{fontSize:11,fontWeight:600,color:"#6B8F6B",textTransform:"uppercase",letterSpacing:0.8}}>Contraseña</label>
+              <input type="password" value={pass} onChange={e=>{setPass(e.target.value);setErr("");}} placeholder="••••••••••••" autoFocus
+                style={{background:"#0F1A0F",border:`1px solid ${err?"#EF4444":"#2A3D2A"}`,borderRadius:8,padding:"10px 14px",color:"#E8F5E9",fontSize:14,outline:"none",letterSpacing:4}}/>
+              {err&&<span style={{fontSize:11,color:"#EF4444"}}>{err}</span>}
+            </div>
+            <button type="submit" style={{background:"#22C55E",color:"#0F1A0F",border:"none",borderRadius:8,padding:"11px",fontSize:13.5,fontWeight:800,cursor:"pointer",width:"100%"}}>Ingresar →</button>
+          </div>
+        </form>
+        <p style={{textAlign:"center",color:"#6B8F6B",fontSize:10.5,marginTop:20}}>Acceso restringido · Solo personal autorizado</p>
+      </div>
+      <style>{"@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}"}</style>
+    </div>
+  );
+}
 
 // ── Palette & helpers ──────────────────────────────────────
 const G = {
@@ -67,10 +106,7 @@ const SEED_KPIS = [
 // ── Persistent storage wrapper ────────────────────────────
 function useStorage(key, fallback) {
   const [val, setVal] = useState(() => {
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : fallback;
-    } catch { return fallback; }
+    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; } catch { return fallback; }
   });
   const [ready] = useState(true);
   const save = useCallback(newVal => {
@@ -78,6 +114,51 @@ function useStorage(key, fallback) {
     try { localStorage.setItem(key, JSON.stringify(newVal)); } catch {}
   }, [key]);
   return [val, save, ready];
+}
+
+
+// ── Notifications ─────────────────────────────────────────
+const daysSince = d => Math.floor((Date.now()-new Date(d))/(864e5));
+
+function useNotificaciones(ordenes) {
+  return useMemo(() => {
+    const n = [];
+    ordenes.forEach(o => {
+      const d = daysSince(o.fecha);
+      if(o.estado==="Pendiente Aprobación"&&d>=3) n.push({id:o.id,tipo:"warning",icono:"⏰",titulo:`OC pendiente hace ${d} días`,mensaje:`${o.id} · ${fmt$(o.monto)}`,ref:"ordenes"});
+      if(o.estado==="Borrador"&&d>=7) n.push({id:o.id+"b",tipo:"info",icono:"📝",titulo:`Borrador sin enviar hace ${d} días`,mensaje:`${o.id}`,ref:"ordenes"});
+    });
+    return n;
+  },[ordenes]);
+}
+
+function PanelNotificaciones({notifs,onClose,onNavigate}) {
+  return (
+    <div style={{position:"fixed",top:64,right:20,width:320,background:"#141F14",border:"1px solid #2A3D2A",borderRadius:14,boxShadow:"0 16px 48px rgba(0,0,0,0.5)",zIndex:500,overflow:"hidden"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",borderBottom:"1px solid #2A3D2A"}}>
+        <span style={{fontSize:13,fontWeight:700,color:"#E8F5E9"}}>🔔 Alertas ({notifs.length})</span>
+        <button onClick={onClose} style={{background:"none",border:"none",color:"#6B8F6B",fontSize:18,cursor:"pointer"}}>×</button>
+      </div>
+      {notifs.length===0?(
+        <div style={{padding:"24px",textAlign:"center",color:"#6B8F6B",fontSize:12}}>✅ Todo al día</div>
+      ):(
+        <div style={{maxHeight:300,overflowY:"auto"}}>
+          {notifs.map((n,i)=>(
+            <div key={i} onClick={()=>{onNavigate(n.ref);onClose();}} style={{padding:"12px 16px",borderBottom:"1px solid #2A3D2A",cursor:"pointer"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#223022"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{display:"flex",gap:10}}>
+                <span style={{fontSize:18,flexShrink:0}}>{n.icono}</span>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:n.tipo==="warning"?"#F59E0B":"#3B82F6",marginBottom:3}}>{n.titulo}</div>
+                  <div style={{fontSize:11,color:"#6B8F6B"}}>{n.mensaje}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Mini components ────────────────────────────────────────
@@ -687,7 +768,9 @@ function Analisis({proveedores}) {
 //  APP PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 export default function App() {
+  const [loggedIn, setLoggedIn] = useStorage("hv360_auth", false);
   const [mod, setMod] = useState("dashboard");
+  const [showNotifs, setShowNotifs] = useState(false);
   const [proveedores, setProveedoresRaw, provReady] = useStorage("hv360_proveedores", SEED_PROVEEDORES);
   const [ordenes, setOrdenesRaw, ocReady] = useStorage("hv360_ordenes", SEED_ORDENES);
   const [kpis, setKpisRaw, kpiReady] = useStorage("hv360_kpis", SEED_KPIS);
@@ -704,6 +787,7 @@ export default function App() {
     {id:"ordenes",label:"Órdenes OC",icon:"📋",badge:ordenes.filter(o=>o.estado==="Pendiente Aprobación").length},
     {id:"kpis",label:"KPIs",icon:"🎯"},
     {id:"analisis",label:"Análisis",icon:"📊"},
+    {id:"reporte",label:"Reporte PDF",icon:"📄"},
   ];
 
   const views = {
@@ -712,7 +796,12 @@ export default function App() {
     ordenes: <Ordenes ordenes={ordenes} setOrdenes={setOrdenes} proveedores={proveedores}/>,
     kpis: <KPIs kpis={kpis} setKpis={setKpis}/>,
     analisis: <Analisis proveedores={proveedores}/>,
+        reporte: <div style={{padding:"40px",textAlign:"center",color:"#6B8F6B"}}><div style={{fontSize:48,marginBottom:16}}>📄</div><h2 style={{color:"#E8F5E9",marginBottom:8}}>Reporte Ejecutivo</h2><p style={{marginBottom:24}}>Resumen del período actual con KPIs, proveedores y órdenes.</p><button onClick={()=>window.print()} style={{background:"#22C55E",color:"#0F1A0F",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13.5,fontWeight:800,cursor:"pointer"}}>🖨️ Imprimir / Exportar PDF</button></div>,
   };
+
+  const notifs = useNotificaciones(ordenes);
+
+  if (!loggedIn) return <Login onLogin={()=>setLoggedIn(true)}/>;
 
   if (!ready) return (
     <div style={{background:G.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -757,21 +846,23 @@ export default function App() {
             <div style={{fontSize:11.5,fontWeight:600,color:G.text}}>José Vargas</div>
             <div style={{fontSize:10,color:G.muted}}>Supply Chain</div>
           </div>
-          <div style={{marginLeft:"auto",width:6,height:6,borderRadius:"50%",background:G.green}}/>
+          <button onClick={()=>setLoggedIn(false)} title="Cerrar sesión" style={{marginLeft:"auto",background:"none",border:"none",color:G.muted,cursor:"pointer",fontSize:14}}>🚪</button>
         </div>
       </aside>
 
       {/* Main */}
       <main style={{flex:1,marginLeft:220,padding:"28px 32px",minHeight:"100vh",maxWidth:"calc(100vw - 220px)"}}>
         {/* Top bar */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,paddingBottom:16,borderBottom:`1px solid ${G.border}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {nav.find(n=>n.id===mod)?.icon && <span style={{fontSize:18}}>{nav.find(n=>n.id===mod).icon}</span>}
-            <div style={{fontSize:11,color:G.muted}}>Sistema de Procurement · {fmtDate()}</div>
-          </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,paddingBottom:16,borderBottom:`1px solid ${G.border}`,position:"sticky",top:0,background:G.bg,zIndex:50,paddingTop:20}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:G.green,boxShadow:`0 0 8px ${G.green}`}}/>
-            <span style={{fontSize:10.5,color:G.green,fontWeight:600}}>Sistema activo</span>
+            <span style={{fontSize:10.5,color:G.green,fontWeight:600}}>Sistema activo · {fmtDate()}</span>
+          </div>
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowNotifs(!showNotifs)} style={{background:notifs.length>0?G.amber+"22":G.card,border:`1px solid ${notifs.length>0?G.amber+"44":G.border}`,borderRadius:8,padding:"6px 12px",color:notifs.length>0?G.amber:G.muted,cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:6}}>
+              🔔 {notifs.length>0?`${notifs.length} alertas`:"Sin alertas"}
+            </button>
+            {showNotifs&&<PanelNotificaciones notifs={notifs} onClose={()=>setShowNotifs(false)} onNavigate={m=>{setMod(m);setShowNotifs(false);}}/>}
           </div>
         </div>
 
