@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const C = {
   bg:"#FAF5EC", panel:"#F0E8D8", card:"#FFFFFF", borde:"#D6C9B0",
@@ -569,31 +569,146 @@ function TabProveedores() {
 }
 
 // ══════════════════════════════════════════════════════════
+//  PARSER EXCEL — carga xlsx desde CDN dinámicamente
+// ══════════════════════════════════════════════════════════
+function cargarXLSX() {
+  return new Promise((resolve) => {
+    if (window.XLSX) { resolve(window.XLSX); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => resolve(window.XLSX);
+    document.head.appendChild(s);
+  });
+}
+
+async function parsearExcel(file) {
+  const XLSX = await cargarXLSX();
+  const buf  = await file.arrayBuffer();
+  const wb   = XLSX.read(buf, { type:"array", cellDates:true });
+  const override = {};
+  for (const año of [2023,2024,2025,2026]) {
+    const nombre = `COMPRAS ${año}`;
+    if (!wb.SheetNames.includes(nombre)) continue;
+    const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], {defval:null});
+    if (!filas.length) continue;
+    const porMes = Array(12).fill(null);
+    const porCat = {}, porProv = {};
+    let total = 0;
+    for (const f of filas) {
+      const monto = parseFloat(f["Producto"])||0;
+      if (!monto) continue;
+      total += monto;
+      const fecha = f["Fecha C."];
+      if (fecha) {
+        const d = fecha instanceof Date ? fecha : new Date(fecha);
+        if (!isNaN(d) && d.getFullYear()===año) {
+          const i = d.getMonth();
+          porMes[i] = (porMes[i]||0) + monto;
+        }
+      }
+      const cat  = f["Categoría Padre"] ? String(f["Categoría Padre"]).trim() : "SIN CATEGORÍA";
+      porCat[cat] = (porCat[cat]||0) + monto;
+      const prov = f["Proveedor"] ? String(f["Proveedor"]).trim() : "SIN PROVEEDOR";
+      porProv[prov] = (porProv[prov]||0) + monto;
+    }
+    override[año] = { total, mensuales:porMes, porCat, porProv };
+  }
+  return override;
+}
+
+// ══════════════════════════════════════════════════════════
 //  APP
 // ══════════════════════════════════════════════════════════
 export default function App() {
-  const [tab, setTab] = useState("tendencias");
+  const [tab, setTab]           = useState("tendencias");
+  const [archivo, setArchivo]   = useState(null);   // nombre del archivo cargado
+  const [cargando, setCargando] = useState(false);
+  const [toast, setToast]       = useState("");
+  const [overrideData, setOverrideData] = useState(null); // datos del Excel subido
+  const inputRef = useRef();
+
+  function mostrarToast(msg) {
+    setToast(msg);
+    setTimeout(()=>setToast(""),3500);
+  }
+
+  async function procesarArchivo(file) {
+    if (!file || !file.name.match(/\.(xlsx|xls)$/i)) {
+      mostrarToast("⚠️ Solo se aceptan archivos .xlsx o .xls");
+      return;
+    }
+    setCargando(true);
+    try {
+      const datos = await parsearExcel(file);
+      const años  = Object.keys(datos);
+      if (!años.length) { mostrarToast("⚠️ No se encontraron hojas COMPRAS en el archivo"); setCargando(false); return; }
+      setOverrideData(datos);
+      setArchivo(file.name);
+      setCargando(false);
+      mostrarToast(`✅ Datos actualizados desde ${file.name}`);
+    } catch(err) {
+      mostrarToast("⚠️ Error: " + err.message);
+      setCargando(false);
+    }
+  }
+
+  // Si hay datos cargados desde Excel, inyectarlos en las constantes globales
+  // mediante props que cada tab puede recibir opcionalmente
+  const datosOverride = overrideData;
+
   const vistas = {
-    tendencias: <TabTendencias/>,
-    estacional: <TabEstacional/>,
-    categorias: <TabCategorias/>,
+    tendencias: <TabTendencias override={datosOverride}/>,
+    estacional: <TabEstacional override={datosOverride}/>,
+    categorias: <TabCategorias override={datosOverride}/>,
     costo:      <TabCosto/>,
     proveedores:<TabProveedores/>,
   };
 
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Inter','Segoe UI',sans-serif",color:C.texto}}>
-      <div style={{background:`linear-gradient(135deg,#2D5016 0%,#4A7C3F 100%)`,padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,#2D5016 0%,#4A7C3F 100%)`,padding:"14px 32px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:28}}>🌿</span>
           <div>
             <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>Hoja Verde 360° — Análisis Avanzado de Compras</div>
-            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>DATOS REALES MASTER FILE · 2022–2026</div>
+            <div style={{fontSize:10,color:"#95D5B2",letterSpacing:1}}>
+              {archivo ? `📂 ${archivo}` : "DATOS BASE 2022–2026 · MASTER FILE"}
+            </div>
           </div>
         </div>
-        <div style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {archivo && (
+            <button onClick={()=>{setOverrideData(null);setArchivo(null);mostrarToast("↩️ Datos base restaurados");}}
+              style={{background:"#ffffff15",border:"1px solid #ffffff33",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>
+              ↩️ Restaurar datos base
+            </button>
+          )}
+          <button onClick={()=>inputRef.current.click()} disabled={cargando}
+            style={{background:cargando?"#ffffff22":"#ffffff",border:"none",borderRadius:8,padding:"7px 16px",color:C.verde,fontSize:12,fontWeight:800,cursor:cargando?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {cargando?"⏳ Procesando...":"📂 Actualizar con nuevo Excel"}
+          </button>
+          <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{display:"none"}}
+            onChange={e=>{procesarArchivo(e.target.files[0]); e.target.value="";}}/>
+          <span style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</span>
+        </div>
       </div>
 
+      {/* Toast */}
+      {toast && (
+        <div style={{position:"fixed",top:16,right:16,background:C.verde,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px #0005"}}>
+          {toast}
+        </div>
+      )}
+
+      {/* Banner datos fuente */}
+      {archivo && (
+        <div style={{background:C.verdeL,borderBottom:`1px solid ${C.borde}`,padding:"6px 32px",fontSize:11,color:C.verde,fontWeight:600}}>
+          ✅ Mostrando datos de: <strong>{archivo}</strong> · Los datos base siguen disponibles si restauras.
+        </div>
+      )}
+
+      {/* Tabs */}
       <div style={{background:C.panel,borderBottom:`1px solid ${C.borde}`,padding:"0 32px",display:"flex",gap:2,overflowX:"auto"}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
