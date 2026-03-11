@@ -159,11 +159,25 @@ const PPTO_GHV = {
 };
 
 // Por finca 2025 (completo)
-const PPTO_FINCAS_2025 = {
-  HV: [{ppto:66708,ejec:70999,pct:106.4},{ppto:66708,ejec:71668,pct:107.4},{ppto:66708,ejec:70513,pct:105.7},{ppto:64746,ejec:74906,pct:115.7},{ppto:66708,ejec:66541,pct:99.8},{ppto:66708,ejec:49875,pct:74.8},{ppto:71196,ejec:59481,pct:83.5},{ppto:71196,ejec:56571,pct:79.5},{ppto:71196,ejec:56199,pct:78.9},{ppto:71196,ejec:74951,pct:105.3},{ppto:71196,ejec:68888,pct:96.8},{ppto:71196,ejec:65505,pct:92.0}],
-  FM: [{ppto:50830,ejec:62945,pct:123.8},{ppto:50830,ejec:58606,pct:115.3},{ppto:49335,ejec:60815,pct:123.3},{ppto:50830,ejec:59724,pct:117.5},{ppto:50830,ejec:49956,pct:98.3},{ppto:50830,ejec:47265,pct:93.0},{ppto:53754,ejec:54043,pct:100.5},{ppto:53754,ejec:41837,pct:82.3},{ppto:53754,ejec:52138,pct:97.0},{ppto:53754,ejec:58535,pct:108.9},{ppto:53754,ejec:55000,pct:102.3},{ppto:53754,ejec:60000,pct:111.6}],
-  JG: [{ppto:46648,ejec:53733,pct:115.2},{ppto:45276,ejec:49996,pct:110.4},{ppto:46648,ejec:51891,pct:111.2},{ppto:46648,ejec:59455,pct:127.5},{ppto:46648,ejec:49660,pct:106.5},{ppto:45276,ejec:38368,pct:84.7},{ppto:46648,ejec:42849,pct:91.9},{ppto:46648,ejec:38688,pct:82.9},{ppto:46648,ejec:44220,pct:94.8},{ppto:46648,ejec:49680,pct:106.5},{ppto:46648,ejec:45000,pct:96.5},{ppto:46648,ejec:50000,pct:107.2}],
-  EC: [{ppto:23496,ejec:27383,pct:116.5},{ppto:24208,ejec:26719,pct:110.4},{ppto:24208,ejec:28450,pct:117.5},{ppto:24208,ejec:27305,pct:112.8},{ppto:23496,ejec:28127,pct:119.7},{ppto:24208,ejec:25476,pct:105.2},{ppto:27200,ejec:25558,pct:94.0},{ppto:33932,ejec:26204,pct:77.2},{ppto:33932,ejec:30999,pct:91.4},{ppto:33932,ejec:32309,pct:95.2},{ppto:33932,ejec:30562,pct:90.1},{ppto:36224,ejec:28436,pct:78.5}],
+const PPTO_FINCAS = {
+  2024: {
+    HV: [{ppto:72594,ejec:77400.68,pct:106.62},{ppto:72594,ejec:66232.24,pct:91.24},{ppto:72594,ejec:68484.2,pct:94.34},{ppto:72594,ejec:71239.61,pct:98.13},{ppto:72594,ejec:70340.43,pct:96.9},{ppto:72594,ejec:61839.01,pct:85.18},{ppto:72594,ejec:76011.29,pct:104.71},{ppto:66708,ejec:68833.99,pct:103.19},{ppto:66708,ejec:59185.1,pct:88.72},{ppto:72594,ejec:68354.11,pct:94.16},{ppto:72594,ejec:57192.84,pct:78.78},{ppto:72594,ejec:71883.27,pct:99.02}],
+    FM: [{ppto:56810,ejec:62713.43,pct:110.39},{ppto:56810,ejec:59497.09,pct:104.73},{ppto:56810,ejec:59399.52,pct:104.56},{ppto:56810,ejec:59665.41,pct:105.03},{ppto:56810,ejec:60495.56,pct:106.49},{ppto:56810,ejec:57991.4,pct:102.08},{ppto:56810,ejec:61633.9,pct:108.49},{ppto:50830,ejec:58966.29,pct:116.01},{ppto:50830,ejec:48768.41,pct:95.94},{ppto:56810,ejec:60990.5,pct:107.36},{ppto:56810,ejec:51674.96,pct:90.96},{ppto:56810,ejec:61542.41,pct:108.33}],
+    JG: [{ppto:50505,ejec:54650.81,pct:108.21},{ppto:50505,ejec:49076.19,pct:97.17},{ppto:50505,ejec:47630.88,pct:94.31},{ppto:50505,ejec:52875.22,pct:104.69},{ppto:50505,ejec:55298.65,pct:109.49},{ppto:50505,ejec:47584.58,pct:94.22},{ppto:50505,ejec:44818.79,pct:88.74},{ppto:46410,ejec:49033.21,pct:105.65},{ppto:46410,ejec:48054.15,pct:103.54},{ppto:50505,ejec:52522.76,pct:104.0},{ppto:50505,ejec:47709.5,pct:94.46},{ppto:50505,ejec:51940.49,pct:102.84}],
+    EC: [{ppto:24960,ejec:29875.38,pct:119.69},{ppto:24960,ejec:30673.92,pct:122.89},{ppto:24960,ejec:19520.77,pct:78.21},{ppto:24960,ejec:26138.9,pct:104.72},{ppto:24960,ejec:24921.86,pct:99.85},{ppto:24960,ejec:23785.39,pct:95.29},{ppto:24960,ejec:24068.85,pct:96.43},{ppto:21760,ejec:21766.11,pct:100.03},{ppto:21760,ejec:23165.5,pct:106.46},{ppto:27768,ejec:25770.47,pct:103.25},{ppto:27768,ejec:24193.26,pct:87.13},{ppto:24960,ejec:29078.19,pct:116.5}],
+  },
+  2025: {
+    HV: [{ppto:66708,ejec:70999.02,pct:106.43},{ppto:66708,ejec:71668.07,pct:107.44},{ppto:66708,ejec:70513.41,pct:105.7},{ppto:64746,ejec:74905.95,pct:115.69},{ppto:66708,ejec:66540.89,pct:99.75},{ppto:66708,ejec:49874.62,pct:74.77},{ppto:71196,ejec:59480.59,pct:83.54},{ppto:71196,ejec:56571.34,pct:79.46},{ppto:71196,ejec:56198.9,pct:78.94},{ppto:71196,ejec:74950.58,pct:105.27},{ppto:71196,ejec:63961.12,pct:89.84},{ppto:71196,ejec:65339.54,pct:91.77}],
+    FM: [{ppto:50830,ejec:62944.8,pct:123.83},{ppto:50830,ejec:58605.65,pct:115.3},{ppto:49335,ejec:60815.01,pct:123.27},{ppto:50830,ejec:59723.66,pct:117.5},{ppto:50830,ejec:49955.6,pct:98.28},{ppto:50830,ejec:47264.7,pct:92.99},{ppto:53754,ejec:54042.55,pct:100.54},{ppto:53754,ejec:41837.3,pct:82.31},{ppto:53754,ejec:52138.31,pct:96.99},{ppto:53754,ejec:58534.86,pct:108.89},{ppto:53754,ejec:55256.14,pct:102.79},{ppto:53754,ejec:54897.32,pct:102.13}],
+    JG: [{ppto:46648,ejec:53733.34,pct:115.19},{ppto:45276,ejec:49996.04,pct:110.43},{ppto:46648,ejec:51891.01,pct:111.24},{ppto:46648,ejec:59455.25,pct:127.46},{ppto:46648,ejec:49659.8,pct:106.46},{ppto:45276,ejec:38367.94,pct:84.74},{ppto:46648,ejec:42848.74,pct:91.86},{ppto:46648,ejec:38687.75,pct:82.94},{ppto:46648,ejec:44219.53,pct:94.79},{ppto:46648,ejec:49679.71,pct:106.5},{ppto:46648,ejec:46938.67,pct:100.62},{ppto:46648,ejec:47005.18,pct:100.77}],
+    EC: [{ppto:23496,ejec:27382.91,pct:116.54},{ppto:24208,ejec:26718.82,pct:110.37},{ppto:24208,ejec:28450.26,pct:117.52},{ppto:24208,ejec:27304.53,pct:112.79},{ppto:23496,ejec:28126.64,pct:119.71},{ppto:24208,ejec:25476.41,pct:105.24},{ppto:27200,ejec:25557.67,pct:93.96},{ppto:33932,ejec:26204.3,pct:77.23},{ppto:33932,ejec:30998.68,pct:91.36},{ppto:33932,ejec:32309.49,pct:95.22},{ppto:33932,ejec:33294.17,pct:98.12},{ppto:36074,ejec:36698.71,pct:101.73}],
+  },
+  2026: {
+    HV: [{ppto:71196,ejec:78259.62,pct:109.92},{ppto:71196,ejec:33679.04,pct:47.3},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null},{ppto:71196,ejec:null,pct:null}],
+    FM: [{ppto:53754,ejec:52827.83,pct:98.28},{ppto:53754,ejec:22068.53,pct:41.05},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null},{ppto:53754,ejec:null,pct:null}],
+    JG: [{ppto:46648,ejec:49500.22,pct:106.11},{ppto:46648,ejec:24519.9,pct:52.56},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null},{ppto:46648,ejec:null,pct:null}],
+    EC: [{ppto:36074,ejec:36425.67,pct:100.97},{ppto:36074,ejec:20762.26,pct:57.55},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null},{ppto:36074,ejec:null,pct:null}],
+  },
 };
 
 // ── Tab Presupuesto ───────────────────────────────────────
@@ -302,7 +316,7 @@ function TabPresupuesto() {
         /* Vista por finca — solo 2025 */
         <SecCard titulo="Ejecución vs Presupuesto por Finca — 2025" sub="Agroquímicos + Fertilizantes · 4 fincas Grupo Hoja Verde">
           {["HV","FM","JG","EC"].map((finca,fi)=>{
-            const fd = PPTO_FINCAS_2025[finca];
+            const fd = PPTO_FINCAS[año][finca];
             const totalP = fd.reduce((a,b)=>a+b.ppto,0);
             const totalE = fd.reduce((a,b)=>a+b.ejec,0);
             const pctF   = (totalE/totalP*100);
