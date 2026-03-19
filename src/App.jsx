@@ -107,6 +107,7 @@ const TABS = [
   {id:"costo",       label:"Costo por Tallo",       icono:"💲"},
   {id:"proveedores", label:"Proveedores Nuevos vs Recurrentes", icono:"🏭"},
   {id:"presupuesto", label:"Ejec. vs Presupuesto",  icono:"🎯"},
+  { id:"mensajeria", icono:"🚴", label:"Mensajería" },,
 ];
 
 // ══════════════════════════════════════════════════════════
@@ -873,6 +874,7 @@ async function parsearExcel(file) {
 // ══════════════════════════════════════════════════════════
 //  APP
 // ══════════════════════════════════════════════════════════
+import HVMensajeria from "./HV_Mensajeria.jsx";
 export default function App() {
   const [tab, setTab]           = useState("tendencias");
   const [archivo, setArchivo]   = useState(null);   // nombre del archivo cargado
@@ -917,6 +919,7 @@ export default function App() {
     costo:      <TabCosto/>,
     proveedores:<TabProveedores/>,
     presupuesto:<TabPresupuesto/>,
+    mensajeria: <HVMensajeria/>,
   };
 
   return (
