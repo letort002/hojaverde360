@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 
 const C = {
   bg:"#FAF5EC", panel:"#F0E8D8", card:"#FFFFFF", borde:"#D6C9B0",
@@ -875,8 +875,12 @@ async function parsearExcel(file) {
 //  APP
 // ══════════════════════════════════════════════════════════
 import HVMensajeria from "./HV_Mensajeria.jsx";
-export default function App() {
-  const [tab, setTab]           = useState("tendencias");
+import { LoginScreen, USUARIOS } from "./Auth.jsx";
+import MensajeroPanel from "./HV_MensajeroPanel.jsx";
+function AppInterna() {
+  const [tab, setTab] = useState("tendencias");
+
+
   const [archivo, setArchivo]   = useState(null);   // nombre del archivo cargado
   const [cargando, setCargando] = useState(false);
   const [toast, setToast]       = useState("");
@@ -988,4 +992,25 @@ export default function App() {
       `}</style>
     </div>
   );
+}
+
+
+// ── WRAPPER CON LOGIN ─────────────────────────────────────────
+export default function App() {
+  const [session, setSession] = React.useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("hv_session")) || null; } catch(_) { return null; }
+  });
+
+  function handleLogin(user) {
+    sessionStorage.setItem("hv_session", JSON.stringify(user));
+    setSession(user);
+  }
+  function handleLogout() {
+    sessionStorage.removeItem("hv_session");
+    setSession(null);
+  }
+
+  if (!session) return <LoginScreen onLogin={handleLogin}/>;
+  if (session.role === "mensajero") return <MensajeroPanel session={session} onLogout={handleLogout}/>;
+  return <AppInterna session={session} onLogout={handleLogout}/>;
 }

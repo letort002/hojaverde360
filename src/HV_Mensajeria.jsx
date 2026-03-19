@@ -169,7 +169,7 @@ function MapaView({ tasks, messengers }) {
 }
 
 export default function HVMensajeria() {
-  const [messengers, setMessengers] = useState([{name:"Mensajero 1",status:"libre"},{name:"Mensajero 2",status:"libre"}]);
+  const [messengers, setMessengers] = useState([{name:"Segundo Morales",status:"libre"},{name:"Marcelo Sandoval",status:"libre"}]);
   const [tasks, setTasks]           = useState([]);
   const [counter, setCounter]       = useState(1);
   const [filter, setFilter]         = useState("todas");
