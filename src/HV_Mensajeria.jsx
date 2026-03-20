@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 const STORAGE_KEY  = "hv_mensajeria_v3";
+const UMBRAL_MINUTOS = 30; // Alerta si diligencia lleva más de 30 min en Pendiente
 const typeLabels   = { bancario:"Bancario", entrega:"Entrega", recogida:"Recogida", institucional:"Institucional" };
 const typeIcons    = { bancario:"🏦", entrega:"📦", recogida:"🔄", institucional:"🏛️" };
 const statusLabels = { libre:"Libre", "en-ruta":"En ruta", "no-disponible":"No disp." };
@@ -210,6 +211,20 @@ export default function HVMensajeria() {
     const id = setInterval(loadFromStorage, 8000);
     return () => clearInterval(id);
   },[]);
+
+  function minutosEsperando(task) {
+    if (task.status !== "pendiente") return 0;
+    try {
+      const [h, m] = task.hora.replace(" a. m.","").replace(" p. m.","").split(":").map(Number);
+      const esPM = task.hora.includes("p. m.") && h !== 12;
+      const esAM = task.hora.includes("a. m.") && h === 12;
+      const horas24 = esPM ? h + 12 : esAM ? 0 : h;
+      const taskDate = new Date(ahora);
+      taskDate.setHours(horas24, m, 0, 0);
+      const diff = (ahora - taskDate) / 60000;
+      return diff > 0 ? Math.floor(diff) : 0;
+    } catch(_) { return 0; }
+  }
 
   function persist(t,c,m){
     localStorage.setItem(STORAGE_KEY,JSON.stringify({tasks:t,counter:c,messengers:m.map(x=>x.status)}));
@@ -429,6 +444,22 @@ export default function HVMensajeria() {
         </div>
 
         <div>
+          {/* Banner alertas pendientes */}
+          {tasks.filter(t=>t.status==="pendiente"&&minutosEsperando(t)>=UMBRAL_MINUTOS).length>0&&(
+            <div style={{background:"#FFF3CD",border:"1px solid #C07A00",borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <span style={{fontSize:20}}>⚠️</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#C07A00",marginBottom:4}}>Diligencias pendientes por más de {UMBRAL_MINUTOS} minutos</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {tasks.filter(t=>t.status==="pendiente"&&minutosEsperando(t)>=UMBRAL_MINUTOS).map(t=>(
+                    <span key={t.id} style={{background:"#C07A00",color:"#fff",borderRadius:5,padding:"2px 10px",fontSize:12,fontWeight:600}}>
+                      {t.id} · {messengers[t.messenger]?.name} · {minutosEsperando(t)} min
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
             {[{v:tasks.length,l:"Total hoy",c:CM.text},{v:tasks.filter(t=>t.status==="pendiente").length,l:"Pendientes",c:CM.amber},{v:tasks.filter(t=>t.status==="en-progreso").length,l:"En progreso",c:CM.blue},{v:tasks.filter(t=>t.status==="completada").length,l:"Completadas",c:CM.green}].map(({v,l,c})=>(
               <div key={l} style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:10,padding:"14px 18px",borderTop:`3px solid ${c}`}}>
@@ -470,6 +501,11 @@ export default function HVMensajeria() {
                         {messengers[t.messenger]?.name}
                       </div>
                       <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>Asignada {t.hora}</span>
+                      {t.status==="pendiente" && minutosEsperando(t) >= UMBRAL_MINUTOS && (
+                        <span style={{background:"#C07A00",color:"#fff",borderRadius:4,padding:"1px 7px",fontSize:10,fontWeight:700}}>
+                          ⚠️ {minutosEsperando(t)} min esperando
+                        </span>
+                      )}
                     </div>
                     {t.motivoRechazo&&(
                       <div style={{marginTop:6,padding:"5px 10px",fontSize:11,color:"#C0392B",background:"#FDECEA",borderRadius:5,borderLeft:"3px solid #C0392B"}}>
