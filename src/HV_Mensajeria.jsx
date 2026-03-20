@@ -193,16 +193,22 @@ export default function HVMensajeria() {
   },[]);
 
   useEffect(()=>{
-    try {
-      const raw=localStorage.getItem(STORAGE_KEY);
-      if(!raw) return;
-      const d=JSON.parse(raw);
-      if(d.tasks)      setTasks(d.tasks);
-      if(d.counter)    setCounter(d.counter);
-      if(d.messengers) setMessengers(prev=>prev.map((m,i)=>({...m,status:d.messengers[i]||m.status})));
-      setSaveLabel("datos restaurados ✓");
-      setTimeout(()=>setSaveLabel("auto-guardado activo"),2500);
-    }catch(_){}
+    function loadFromStorage() {
+      try {
+        const raw=localStorage.getItem(STORAGE_KEY);
+        if(!raw) return;
+        const d=JSON.parse(raw);
+        if(d.tasks)      setTasks(d.tasks);
+        if(d.counter)    setCounter(d.counter);
+        if(d.messengers) setMessengers(prev=>prev.map((m,i)=>({...m,status:d.messengers[i]||m.status})));
+      }catch(_){}
+    }
+    loadFromStorage();
+    setSaveLabel("datos restaurados ✓");
+    setTimeout(()=>setSaveLabel("auto-guardado activo"),2500);
+    // Polling cada 8s para reflejar cambios del mensajero
+    const id = setInterval(loadFromStorage, 8000);
+    return () => clearInterval(id);
   },[]);
 
   function persist(t,c,m){
@@ -276,6 +282,7 @@ export default function HVMensajeria() {
       "Mensajero":messengers[t.messenger]?.name,
       "Prioridad":t.prioridad.charAt(0).toUpperCase()+t.prioridad.slice(1),
       "Estado":t.status.replace("-"," ").replace(/\b\w/g,l=>l.toUpperCase()),
+      "Motivo Rechazo":t.motivoRechazo||"",
       "Notas":t.nota||"","Obs. Entrega":t.firmaObs||"",
     }));
     const wb=XLSX.utils.book_new();
@@ -451,14 +458,20 @@ export default function HVMensajeria() {
                       </div>
                       <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>Asignada {t.hora}</span>
                     </div>
+                    {t.motivoRechazo&&(
+                      <div style={{marginTop:6,padding:"5px 10px",fontSize:11,color:"#C0392B",background:"#FDECEA",borderRadius:5,borderLeft:"3px solid #C0392B"}}>
+                        ❌ <strong>Motivo de rechazo:</strong> {t.motivoRechazo}
+                      </div>
+                    )}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
                     <select value={t.status} onChange={e=>changeStatus(t.id,e.target.value)} style={{fontSize:11,padding:"4px 8px",borderRadius:5,border:`1px solid ${CM.border}`,background:CM.surface2,color:CM.text,cursor:"pointer",outline:"none"}}>
                       <option value="pendiente">⏳ Pendiente</option>
                       <option value="en-progreso">🔵 En progreso</option>
                       <option value="completada">✅ Completada</option>
+                      <option value="rechazada">❌ Rechazada (admin)</option>
                     </select>
-                    <Badge texto={t.status.replace("-"," ").toUpperCase()} color={t.status==="completada"?CM.green:t.status==="en-progreso"?CM.blue:CM.amber}/>
+                    <Badge texto={t.status.replace("-"," ").toUpperCase()} color={t.status==="completada"?"#2D7A22":t.status==="en-progreso"?"#1A6FAA":t.status==="rechazada"?"#C0392B":"#C07A00"}/>
                     <button onClick={()=>deleteTask(t.id)} style={{fontSize:10,padding:"3px 8px",border:`1px solid ${CM.red}44`,background:"transparent",color:CM.red,borderRadius:4,cursor:"pointer"}}>Eliminar</button>
                   </div>
                 </div>
@@ -497,9 +510,10 @@ export default function HVMensajeria() {
                         <div>{t.hora}</div>
                         {t.horaFin&&<div style={{color:CM.greenM}}>✓{t.horaFin}</div>}
                       </div>
-                      <div><Badge texto={t.status.replace("-"," ")} color={t.status==="completada"?CM.green:t.status==="en-progreso"?CM.blue:CM.amber}/></div>
+                      <div><Badge texto={t.status.replace("-"," ")} color={t.status==="completada"?"#2D7A22":t.status==="en-progreso"?"#1A6FAA":t.status==="rechazada"?"#C0392B":"#C07A00"}/></div>
                     </div>
                     {t.firmaObs&&<div style={{padding:"5px 14px 8px",fontSize:11,color:CM.textMid,background:CM.greenL,borderTop:`1px dashed ${CM.border}`}}>✅ <strong>Obs. entrega:</strong> {t.firmaObs}</div>}
+                    {t.motivoRechazo&&<div style={{padding:"5px 14px 8px",fontSize:11,color:"#C0392B",background:"#FDECEA",borderTop:"1px dashed #C0392B44",borderLeft:"3px solid #C0392B"}}>❌ <strong>Motivo de rechazo:</strong> {t.motivoRechazo}</div>}
                   </div>
                 ))
               }
