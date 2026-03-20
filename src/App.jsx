@@ -875,10 +875,11 @@ async function parsearExcel(file) {
 //  APP
 // ══════════════════════════════════════════════════════════
 import HVMensajeria from "./HV_Mensajeria.jsx";
-import { LoginScreen, USUARIOS } from "./Auth.jsx";
+import { LoginScreen, CambiarClaveModal, checkLogin } from "./Auth.jsx";
 import MensajeroPanel from "./HV_MensajeroPanel.jsx";
-function AppInterna() {
+function AppInterna({ session, onLogout }) {
   const [tab, setTab] = useState("tendencias");
+  const [claveModalAdmin, setClaveModalAdmin] = React.useState(false);
 
 
   const [archivo, setArchivo]   = useState(null);   // nombre del archivo cargado
@@ -953,9 +954,12 @@ function AppInterna() {
           <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{display:"none"}}
             onChange={e=>{procesarArchivo(e.target.files[0]); e.target.value="";}}/>
           <span style={{fontSize:11,color:"#95D5B2"}}>{hoy()}</span>
+          <button onClick={()=>setClaveModalAdmin(true)} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",marginLeft:8}}>🔑 Cambiar clave</button>
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer",marginLeft:4}}>Cerrar sesión</button>
         </div>
       </div>
 
+                  {claveModalAdmin && <CambiarClaveModal session={session} onClose={()=>setClaveModalAdmin(false)}/>}
       {/* Toast */}
       {toast && (
         <div style={{position:"fixed",top:16,right:16,background:C.verde,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:12,fontWeight:700,zIndex:999,boxShadow:"0 4px 20px #0005"}}>

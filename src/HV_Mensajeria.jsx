@@ -261,6 +261,19 @@ export default function HVMensajeria() {
     showToast(status==="completada"?`✅ ${id} completada`:`✓ ${id} → ${status.replace("-"," ")}`);
   }
 
+
+  function reasignarTarea(id, nuevoMensajero) {
+    const nt = tasks.map(t => t.id===id ? {
+      ...t,
+      messenger: nuevoMensajero,
+      status: "pendiente",
+      motivoRechazo: "",
+      firmaObs: "",
+      hora: new Date().toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit"}),
+    } : t);
+    setTasks(nt); persist(nt, counter, messengers);
+    showToast(`✓ Diligencia reasignada a ${messengers[nuevoMensajero].name}`);
+  }
   function deleteTask(id){
     const nt=tasks.filter(t=>t.id!==id);
     setTasks(nt);persist(nt,counter,messengers);showToast("Diligencia eliminada");
@@ -472,6 +485,16 @@ export default function HVMensajeria() {
                       <option value="rechazada">❌ Rechazada (admin)</option>
                     </select>
                     <Badge texto={t.status.replace("-"," ").toUpperCase()} color={t.status==="completada"?"#2D7A22":t.status==="en-progreso"?"#1A6FAA":t.status==="rechazada"?"#C0392B":"#C07A00"}/>
+                    {t.status==="rechazada" && (
+                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        <div style={{fontSize:10,color:CM.textGray,textAlign:"center"}}>Reasignar a:</div>
+                        {messengers.map((m,i)=> i!==t.messenger && (
+                          <button key={i} onClick={()=>reasignarTarea(t.id,i)} style={{fontSize:10,padding:"4px 8px",background:CM.greenL,border:`1px solid ${CM.green}`,color:CM.green,borderRadius:4,cursor:"pointer",fontWeight:600}}>
+                            ↩ {m.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <button onClick={()=>deleteTask(t.id)} style={{fontSize:10,padding:"3px 8px",border:`1px solid ${CM.red}44`,background:"transparent",color:CM.red,borderRadius:4,cursor:"pointer"}}>Eliminar</button>
                   </div>
                 </div>

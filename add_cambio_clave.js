@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+const fs = require("fs");
+
+// ── NUEVA Auth.jsx completa con cambio de clave ───────────────
+const authContent = `import React, { useState } from "react";
 
 const PASS_KEY = "hv_passwords";
 
@@ -169,3 +172,112 @@ export function LoginScreen({ onLogin }) {
     </div>
   );
 }
+`;
+
+fs.writeFileSync("src/Auth.jsx", authContent, "utf8");
+console.log("✅ src/Auth.jsx actualizado con cambio de clave");
+
+// ── Patch MensajeroPanel — agregar botón cambiar clave ────────
+let mensajero = fs.readFileSync("src/HV_MensajeroPanel.jsx", "utf8");
+
+// Agregar import de CambiarClaveModal
+if (!mensajero.includes("CambiarClaveModal")) {
+  mensajero = `import { CambiarClaveModal } from "./Auth.jsx";\n` + mensajero;
+}
+
+// Agregar estado del modal
+if (!mensajero.includes("claveModal")) {
+  mensajero = mensajero.replace(
+    `const [rechazoModal, setRechazoModal] = useState(null);`,
+    `const [rechazoModal, setRechazoModal] = useState(null);
+  const [claveModal, setClaveModal] = useState(false);`
+  );
+}
+
+// Agregar render del modal
+if (!mensajero.includes("claveModal &&")) {
+  mensajero = mensajero.replace(
+    `{rechazoModal && <RechazoModal`,
+    `{claveModal && <CambiarClaveModal session={session} onClose={()=>setClaveModal(false)}/>}
+      {rechazoModal && <RechazoModal`
+  );
+}
+
+// Agregar botón en el header
+if (!mensajero.includes("setClaveModal(true)")) {
+  mensajero = mensajero.replace(
+    `<button onClick={onLogout} style={{padding:"6px 14px",background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontSize:12,cursor:"pointer"}}>
+            Cerrar sesión
+          </button>`,
+    `<button onClick={()=>setClaveModal(true)} style={{padding:"6px 14px",background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontSize:12,cursor:"pointer"}}>
+            🔑 Cambiar clave
+          </button>
+          <button onClick={onLogout} style={{padding:"6px 14px",background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontSize:12,cursor:"pointer"}}>
+            Cerrar sesión
+          </button>`
+  );
+}
+
+fs.writeFileSync("src/HV_MensajeroPanel.jsx", mensajero, "utf8");
+console.log("✅ src/HV_MensajeroPanel.jsx actualizado");
+
+// ── Patch App.jsx — agregar botón cambiar clave al admin ──────
+let app = fs.readFileSync("src/App.jsx", "utf8");
+
+// Actualizar import de Auth
+if (!app.includes("CambiarClaveModal")) {
+  app = app.replace(
+    `import { LoginScreen, USUARIOS } from "./Auth.jsx";`,
+    `import { LoginScreen, CambiarClaveModal, checkLogin } from "./Auth.jsx";`
+  );
+}
+
+// Agregar estado claveModal en AppInterna
+if (!app.includes("claveModalAdmin")) {
+  app = app.replace(
+    `function AppInterna({ session, onLogout })`,
+    `function AppInterna({ session, onLogout })`
+  );
+  // Buscar primer useState de AppInterna y agregar claveModal
+  app = app.replace(
+    `const [tab, setTab]           = useState("tendencias");`,
+    `const [tab, setTab]           = useState("tendencias");
+  const [claveModalAdmin, setClaveModalAdmin] = useState(false);`
+  );
+}
+
+// Agregar render del modal y botón en header del admin
+if (!app.includes("claveModalAdmin &&")) {
+  // Agregar modal render
+  app = app.replace(
+    `{/* Toast */}`,
+    `{claveModalAdmin && <CambiarClaveModal session={session} onClose={()=>setClaveModalAdmin(false)}/>}
+      {/* Toast */}`
+  );
+
+  // Agregar botón en header junto a "Cerrar sesión"
+  app = app.replace(
+    `<button onClick={onLogout} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>
+            Cerrar sesión
+          </button>`,
+    `<button onClick={()=>setClaveModalAdmin(true)} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>
+            🔑 Cambiar clave
+          </button>
+          <button onClick={onLogout} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,padding:"5px 12px",color:"#fff",fontSize:11,cursor:"pointer"}}>
+            Cerrar sesión
+          </button>`
+  );
+}
+
+// Actualizar el wrapper para usar checkLogin en lugar de USUARIOS
+app = app.replace(
+  `import { LoginScreen, USUARIOS } from "./Auth.jsx";`,
+  `import { LoginScreen, CambiarClaveModal, checkLogin } from "./Auth.jsx";`
+);
+
+fs.writeFileSync("src/App.jsx", app, "utf8");
+console.log("✅ src/App.jsx actualizado");
+
+console.log("\n🎉 Cambio de clave listo para todos los usuarios");
+console.log("   Botón 🔑 Cambiar clave en el header de cada panel");
+console.log("\nEjecuta: npm run dev");

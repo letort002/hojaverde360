@@ -1,3 +1,4 @@
+import { CambiarClaveModal } from "./Auth.jsx";
 import { useState, useEffect, useRef } from "react";
 
 const STORAGE_KEY = "hv_mensajeria_v3";
@@ -91,6 +92,7 @@ export default function MensajeroPanel({ session, onLogout }) {
   const [clock, setClock]           = useState("");
   const [firmaModal, setFirmaModal]   = useState(null);
   const [rechazoModal, setRechazoModal] = useState(null);
+  const [claveModal, setClaveModal] = useState(false);
   const myIdx = session.idx;
 
   useEffect(() => {
@@ -171,6 +173,7 @@ export default function MensajeroPanel({ session, onLogout }) {
 
       {toast && <div style={{position:"fixed",top:16,right:16,background:CM.green,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:12,fontWeight:700,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>{toast}</div>}
       {firmaModal   && <FirmaModal   tarea={firmaModal}   onConfirm={obs=>applyStatus(firmaModal.id,"completada",obs)} onCancel={()=>setFirmaModal(null)}/>}
+      {claveModal && <CambiarClaveModal session={session} onClose={()=>setClaveModal(false)}/>}
       {rechazoModal && <RechazoModal tarea={rechazoModal} onConfirm={motivo=>applyRechazo(rechazoModal.id,motivo)}    onCancel={()=>setRechazoModal(null)}/>}
 
       {/* Header */}
@@ -184,6 +187,9 @@ export default function MensajeroPanel({ session, onLogout }) {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
           <div style={{fontFamily:"monospace",fontSize:13,color:"#95D5B2"}}>{clock}</div>
+          <button onClick={()=>setClaveModal(true)} style={{padding:"6px 14px",background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontSize:12,cursor:"pointer"}}>
+            🔑 Cambiar clave
+          </button>
           <button onClick={onLogout} style={{padding:"6px 14px",background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.3)",borderRadius:7,color:"#fff",fontSize:12,cursor:"pointer"}}>
             Cerrar sesión
           </button>
