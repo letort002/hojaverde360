@@ -15,6 +15,7 @@ const CM = {
   text:"#1A2E12", textMid:"#4A6340", textGray:"#7A8E74",
 };
 const typeColor = { bancario:CM.blue, entrega:CM.purple, recogida:CM.amber, institucional:CM.green };
+const prioColor = { urgente:"#7B0000", alta:CM.red, media:CM.amber, baja:CM.textGray };
 
 function Badge({ texto, color }) {
   return <span style={{ background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:.5, whiteSpace:"nowrap" }}>{texto}</span>;
@@ -222,7 +223,9 @@ export default function MensajeroPanel({ session, onLogout }) {
             </div>
             {items.map(t=>(
               <div key={t.id} style={{
-                background:CM.surface, border:`1px solid ${CM.border}`, borderRadius:10,
+                background:t.prioridad==="urgente"?"#FFF0F0":CM.surface,
+                border:`1px solid ${t.prioridad==="urgente"?"#7B0000":CM.border}`,
+                borderRadius:10,
                 padding:16, marginBottom:10,
                 display:"grid", gridTemplateColumns:"5px 1fr auto", gap:14,
                 boxShadow:"0 1px 3px rgba(0,0,0,.05)",
@@ -233,7 +236,7 @@ export default function MensajeroPanel({ session, onLogout }) {
                   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,flexWrap:"wrap"}}>
                     <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>{t.id}</span>
                     <Badge texto={`${typeIcons[t.tipo]} ${typeLabels[t.tipo]}`} color={typeColor[t.tipo]}/>
-                    <Badge texto={t.prioridad?.toUpperCase()||"MEDIA"} color={t.prioridad==="alta"?CM.red:t.prioridad==="baja"?CM.textGray:CM.amber}/>
+                    <Badge texto={t.prioridad==="urgente"?"🚨 URGENTE":t.prioridad?.toUpperCase()||"MEDIA"} color={prioColor[t.prioridad]||CM.amber}/>
                   </div>
                   <div style={{fontSize:14,fontWeight:600,color:CM.text,marginBottom:4}}>{t.desc}</div>
                   <div style={{fontSize:12,color:CM.textGray,marginBottom:4}}>📍 {t.dest}</div>

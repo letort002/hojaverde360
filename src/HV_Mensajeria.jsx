@@ -16,7 +16,7 @@ const CM = {
   text:"#1A2E12",  textMid:"#4A6340", textGray:"#7A8E74",
 };
 const typeColor = { bancario:CM.blue, entrega:CM.purple, recogida:CM.amber, institucional:CM.green };
-const prioColor = { alta:CM.red, media:CM.amber, baja:CM.textGray };
+const prioColor = { urgente:"#7B0000", alta:CM.red, media:CM.amber, baja:CM.textGray };
 
 function loadScript(src, check) {
   return new Promise(resolve => {
@@ -512,7 +512,8 @@ export default function HVMensajeria() {
               </div>
               <div>
                 <label style={{fontSize:11,color:CM.textGray,fontWeight:500,display:"block",marginBottom:4}}>Prioridad</label>
-                <select ref={fPrio} style={inputSt()}><option value="alta">🔴 Alta</option><option value="media">🟡 Media</option><option value="baja">⚪ Baja</option></select>
+                <select ref={fPrio} style={inputSt()}><option value="urgente">🚨 Urgente</option>
+                <option value="alta">🔴 Alta</option><option value="media">🟡 Media</option><option value="baja">⚪ Baja</option></select>
               </div>
             </div>
             <button onClick={addTask} style={{width:"100%",padding:10,background:CM.green,color:"#fff",border:"none",borderRadius:7,fontWeight:800,fontSize:13,cursor:"pointer"}}>+ Asignar Diligencia</button>
@@ -523,6 +524,25 @@ export default function HVMensajeria() {
         </div>
 
         <div>
+
+          {/* Banner urgentes */}
+          {tasks.filter(t=>t.prioridad==="urgente"&&t.status!=="completada"&&t.status!=="rechazada").length>0&&(
+            <div style={{background:"#FFF0F0",border:"2px solid #7B0000",borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",animation:"urgenteFlash 1.5s infinite"}}>
+              <span style={{fontSize:22}}>🚨</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:800,color:"#7B0000",marginBottom:4}}>
+                  DILIGENCIAS URGENTES ACTIVAS
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {tasks.filter(t=>t.prioridad==="urgente"&&t.status!=="completada"&&t.status!=="rechazada").map(t=>(
+                    <span key={t.id} style={{background:"#7B0000",color:"#fff",borderRadius:5,padding:"2px 10px",fontSize:12,fontWeight:700}}>
+                      🚨 {t.id} · {messengers[t.messenger]?.name} · {t.desc.slice(0,25)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           {/* Banner alertas pendientes */}
           {tasks.filter(t=>t.status==="pendiente"&&minutosEsperando(t)>=UMBRAL_MINUTOS).length>0&&(
             <div style={{background:"#FFF3CD",border:"1px solid #C07A00",borderRadius:10,padding:"12px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
@@ -569,7 +589,7 @@ export default function HVMensajeria() {
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,flexWrap:"wrap"}}>
                       <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>{t.id}</span>
                       <Badge texto={`${typeIcons[t.tipo]} ${typeLabels[t.tipo]}`} color={typeColor[t.tipo]}/>
-                      <Badge texto={t.prioridad.toUpperCase()} color={prioColor[t.prioridad]}/>
+                      <Badge texto={t.prioridad==="urgente"?"🚨 URGENTE":t.prioridad.toUpperCase()} color={prioColor[t.prioridad]||CM.red}/>
                     </div>
                     <div style={{fontSize:13,fontWeight:600,color:CM.text,marginBottom:4}}>{t.desc}</div>
                     <div style={{fontSize:12,color:CM.textGray,marginBottom:4}}>📍 {t.dest}</div>
