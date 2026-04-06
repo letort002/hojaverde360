@@ -1,512 +1,547 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 
-const STORAGE_KEY  = "hv_mensajeria_v3";
-const typeLabels   = { bancario:"Bancario", entrega:"Entrega", recogida:"Recogida", institucional:"Institucional" };
-const typeIcons    = { bancario:"🏦", entrega:"📦", recogida:"🔄", institucional:"🏛️" };
-const statusLabels = { libre:"Libre", "en-ruta":"En ruta", "no-disponible":"No disp." };
-
-const CM = {
-  bg:"#F8FAF5", surface:"#FFFFFF", surface2:"#F2F7EE", border:"#D8E8D0",
-  green:"#2D7A22", greenL:"#E8F5E1", greenM:"#4A9A3E",
-  amber:"#C07A00", amberL:"#FFF3CD",
-  red:"#C0392B",   redL:"#FDECEA",
-  blue:"#1A6FAA",  blueL:"#E3F0FA",
-  purple:"#6B46A8",
-  text:"#1A2E12",  textMid:"#4A6340", textGray:"#7A8E74",
+// ── PALETA ──────────────────────────────────────────────
+const C = {
+  bg:"#F7F8FA", card:"#FFFFFF", borde:"#E5E7EB",
+  texto:"#111827", sub:"#6B7280", muted:"#9CA3AF",
+  verde:"#166534", verdeL:"#DCFCE7", verdeT:"#16A34A",
+  amber:"#92400E", amberL:"#FEF3C7", amberT:"#D97706",
+  rojo:"#991B1B",  rojoL:"#FEE2E2",  rojoT:"#DC2626",
+  azul:"#1E40AF",  azulL:"#DBEAFE",  azulT:"#2563EB",
+  nav:"#1A2E0A",
 };
-const typeColor = { bancario:CM.blue, entrega:CM.purple, recogida:CM.amber, institucional:CM.green };
-const prioColor = { alta:CM.red, media:CM.amber, baja:CM.textGray };
 
-function loadScript(src, check) {
-  return new Promise(resolve => {
-    if (check()) { resolve(); return; }
-    const s = document.createElement("script");
-    s.src = src; s.onload = resolve;
-    document.head.appendChild(s);
-  });
-}
-function loadCSS(href) {
-  if (document.querySelector(`link[href="${href}"]`)) return;
-  const l = document.createElement("link");
-  l.rel = "stylesheet"; l.href = href;
-  document.head.appendChild(l);
-}
-async function getXLSX() {
-  await loadScript("https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js", () => !!window.XLSX);
-  return window.XLSX;
-}
-async function getLeaflet() {
-  loadCSS("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-  await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", () => !!window.L);
-  return window.L;
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const fmt$  = v => v==null?"—":v>=1e6?`$${(v/1e6).toFixed(2)}M`:v>=1e3?`$${(v/1e3).toFixed(1)}K`:`$${Number(v).toFixed(2)}`;
+const hoy   = () => new Date().toLocaleDateString("es-EC",{day:"2-digit",month:"long",year:"numeric"});
+
+function fmtVal(v, kpi) {
+  if (v == null) return "—";
+  if (kpi.isPct) return `${(v * 100).toFixed(1)}%`;
+  if (["$","$/ha","$/tallo"].includes(kpi.unidad)) return fmt$(v);
+  if (kpi.unidad === "%" && v < 2) return `${(v * 100).toFixed(1)}%`;
+  return `${Number(v).toFixed(2)} ${kpi.unidad}`;
 }
 
-const geocodeCache = {};
-async function geocode(query) {
-  const q = query.trim();
-  if (geocodeCache[q]) return geocodeCache[q];
-  try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+", Quito, Ecuador")}&format=json&limit=1`,
-      { headers:{"Accept-Language":"es"} }
-    );
-    const data = await r.json();
-    if (data.length) {
-      const res = { lat:parseFloat(data[0].lat), lng:parseFloat(data[0].lon) };
-      geocodeCache[q] = res;
-      return res;
-    }
-  } catch(_) {}
+// ── DATOS ───────────────────────────────────────────────
+const GERENCIAS = [
+  {
+    id:"produccion", codigo:"MP-1300", icono:"🌱", color:"#166534", colorBg:"#DCFCE7",
+    nombre:"Producción de Flores", gerente:"Roberto Toscano",
+    kpisHome:[0,6],
+    kpis:[
+      {nombre:"Productividad Exportable vs Planificada", unidad:"t/m²",
+       vals:[6.999,6.607,5.193,6.338,6.184,5.313,6.167,5.269,null,null,null,null],
+       metas:[7.098,7.051,5.103,6.303,7.203,5.501,6.137,5.965,null,null,null,null], menorMejor:false},
+      {nombre:"Gasto Fertilización / Hectárea", unidad:"$/ha",
+       vals:[2234,2122,2196,2229,1956,1573,1856,1652,null,null,null,null],
+       metas:[1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800], menorMejor:true},
+      {nombre:"Gasto Pesticidas / Hectárea", unidad:"$/ha",
+       vals:[1647,1613,1624,1766,1550,1332,1256,1050,null,null,null,null],
+       metas:[1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600], menorMejor:true},
+      {nombre:"No Proceso", unidad:"%", isPct:true,
+       vals:[0,0.0035,0,0,0.0222,0.0107,0.0457,0.0109,null,null,null,null],
+       metas:[0.0218,0.0216,0.0216,0.0160,0.0167,0.0168,0.0343,0.0345,null,null,null,null], menorMejor:true},
+      {nombre:"Bajas", unidad:"%", isPct:true,
+       vals:[0,0.0276,0.0062,0.0051,0.0194,0.0328,0.0575,0.0490,null,null,null,null],
+       metas:[0.0292,0.0068,0.0145,0.0252,0.0078,0.0087,0.0290,0.0174,null,null,null,null], menorMejor:true},
+      {nombre:"Producto No Conforme", unidad:"%", isPct:true,
+       vals:[0.1895,0.1695,0.2057,0.1505,0.1262,0.1391,0.1365,0.1476,null,null,null,null],
+       metas:[0.1821,0.1715,0.1655,0.1661,0.1687,0.1574,0.1529,0.1626,null,null,null,null], menorMejor:true},
+      {nombre:"Nacional por Prob. Fitosanitarios", unidad:"%", isPct:true, nota:"Meta ≤5%",
+       vals:[0.0583,0.0508,0.0386,0.0362,0.0586,0.0628,0.0618,0.0605,null,null,null,null], menorMejor:true},
+    ]
+  },
+  {
+    id:"postcosecha", codigo:"MP-1400", icono:"✂️", color:"#1E40AF", colorBg:"#DBEAFE",
+    nombre:"Procesamiento y Despacho", gerente:"Alexandra Macias",
+    kpisHome:[1,2],
+    kpis:[
+      {nombre:"Vida en Florero", unidad:"días",
+       vals:[13.56,12.52,13.56,14.52,14.26,13.32,13.42,14.52,null,null,null,null],
+       metas:[12,12,12,12,12,12,12,12,12,12,12,12], menorMejor:false},
+      {nombre:"Tallos Procesados / Persona / Hora", unidad:"t/p/h",
+       vals:[140.04,142.37,145.91,142.6,145.91,150.68,149.41,145.48,null,null,null,null],
+       metas:[145,145,145,145,145,145,145,145,145,145,145,145], menorMejor:false},
+      {nombre:"Costo Horas Extras / Tallo", unidad:"$/tallo",
+       vals:[0.0762,0.0741,0.0682,0.0679,0.0721,0.0682,0.0673,0.0661,null,null,null,null],
+       metas:[0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771,0.0771], menorMejor:true},
+      {nombre:"Calificación Florcontrol", unidad:"%",
+       vals:[89.33,93,92.67,88.67,89.25,90.75,93.75,93.75,null,null,null,null],
+       metas:[95,95,95,95,95,95,95,95,95,95,95,95], menorMejor:false},
+    ]
+  },
+  {
+    id:"comercial", codigo:"MP-1200", icono:"📈", color:"#92400E", colorBg:"#FEF3C7",
+    nombre:"Gestión Comercial y Marketing", gerente:"Hernán Dávila",
+    kpisHome:[0,1],
+    kpis:[
+      {nombre:"Volumen de Ventas", unidad:"$",
+       vals:[2024799,2473653,1408068,1743637,1910969,1457938,1497149,1591793,1703640,null,null,null],
+       metas:[1909734,2023605,1359432,1620883,1730402,1371962,1561741,1349948,1479313,null,null,null], menorMejor:false},
+      {nombre:"Precio Promedio Flor Fresca", unidad:"$/tallo",
+       vals:[0.537,0.5908,0.5065,0.4859,0.4833,0.4778,0.4716,0.4972,0.4972,null,null,null],
+       metas:[0.5054,0.5683,0.4873,0.4756,0.5182,0.4801,0.4731,0.4778,0.4760,null,null,null], menorMejor:false},
+      {nombre:"Precio Promedio Flor Tinturada", unidad:"$/tallo",
+       vals:[1.0093,1.07,0.95,0.96,0.97,0.97,0.97,1.02,0.96,null,null,null],
+       metas:[0.95,1.0,0.94,0.94,0.94,0.94,0.94,0.94,0.94,0.96,0.94,0.94], menorMejor:false},
+      {nombre:"Ventas Productos Nuevos", unidad:"%", isPct:true,
+       vals:[0.0634,0.0683,0.0662,0.0572,0.0629,0.0649,0.062,0.0846,0.0662,null,null,null],
+       metas:[0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10], menorMejor:false},
+      {nombre:"Clientes Nuevos", unidad:"#",
+       vals:[4,4,3,1,9,4,8,12,7,null,null,null],
+       metas:[4,4,4,4,4,4,4,4,4,4,4,4], menorMejor:false},
+      {nombre:"Rentabilidad Nuevos Productos", unidad:"%", isPct:true,
+       vals:[0.43,0.48,0.42,0.41,0.43,0.41,0.41,0.39,0.40,null,null,null],
+       metas:[0.30,0.30,0.30,0.30,0.30,0.30,0.30,0.30,0.30,0.30,0.30,0.30], menorMejor:false},
+      {nombre:"Satisfacción del Cliente", unidad:"/5",
+       vals:[null,null,null,null,null,4.67,null,null,4.67,null,null,null],
+       metas:[null,null,null,null,null,4.5,null,null,4.5,null,null,null], menorMejor:false},
+    ]
+  },
+  {
+    id:"finanzas", codigo:"MP-2400", icono:"💰", color:"#5B21B6", colorBg:"#EDE9FE",
+    nombre:"Gestión Financiera", gerente:"Patricio Mora",
+    kpisHome:[0,1],
+    kpis:[
+      {nombre:"EBITDA", unidad:"%", isPct:true, nota:"Trimestral · >20% Excelente · 12–20% Saludable",
+       vals:[null,null,0.28,null,null,0.18,null,null,null,null,null,null],
+       metas:[null,null,0.22,null,null,0.17,null,null,null,null,null,null], menorMejor:false},
+      {nombre:"Índice Productividad Financiera", unidad:"$/$ invertido", nota:"Ingresos / Costos. >1 = eficiente",
+       vals:[1.26,1.52,1.01,1.18,1.18,0.99,1.01,1.05,null,null,null,null], menorMejor:false},
+    ]
+  },
+  {
+    id:"talentohumano", codigo:"MP-2100", icono:"👥", color:"#065F46", colorBg:"#D1FAE5",
+    nombre:"Gestión del Talento Humano", gerente:"Sofía Ingavelez",
+    kpisHome:[0,1],
+    kpis:[
+      {nombre:"Eficiencia Financiera de la MO", unidad:"%", isPct:true, nota:"Costo MO / Ingresos totales",
+       vals:[0.4072,0.3561,0.5178,0.4267,0.4359,0.5334,0.4955,0.4895,null,null,null,null],
+       metas:[null,null,null,null,null,null,0.45,0.45,0.45,null,null,null], menorMejor:true},
+      {nombre:"Índice de Rotación del Personal", unidad:"%", nota:"Meta mensual ≤1.4% · Meta anual ≤17%",
+       vals:[1.55,3.1,3.2,1.15,0.7,1.8,0.45,1.95,1.35,null,null,null],
+       metas:[1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4], menorMejor:true},
+      {nombre:"NPS Colaboradores (GHV)", unidad:"pts", nota:"50+ Excelente · 70+ Clase mundial",
+       vals:[52.12,52.12,52.12,50.08,50.08,50.08,43.99,43.99,43.99,null,null,null], menorMejor:false},
+      {nombre:"Satisfacción Laboral", unidad:"/5", nota:"Meta >4.0",
+       vals:[4.18,4.18,4.18,4.30,4.30,4.30,4.19,4.19,4.19,null,null,null], menorMejor:false},
+    ]
+  },
+  {
+    id:"adquisiciones", codigo:"MP-2500", icono:"📦", color:"#7C2D12", colorBg:"#FFEDD5",
+    nombre:"Adquisiciones / Supply Chain", gerente:"Paulo",
+    kpisHome:[0,1],
+    kpis:[
+      {nombre:"Costo Compras / Tallo Exportable", unidad:"$/tallo", nota:"Gasto compras / tallos exportables",
+       vals:[0.133,0.1115,0.1473,0.1255,0.1094,null,null,null,null,null,null,null], menorMejor:true},
+      {nombre:"Rotación de Inventario", unidad:"veces", nota:"Consumo / Stock promedio",
+       vals:[1.43,1.01,0.78,0.81,0.79,null,null,null,null,null,null,null], menorMejor:false},
+      {nombre:"Variación de Precios Proveedores", unidad:"%",
+       vals:[-0.14,-0.10,-0.30,-0.14,-0.12,null,null,null,null,null,null,null], menorMejor:true},
+      {nombre:"Gasto Total Compras 2025", unidad:"$", nota:"Fuente: Master File Procurement",
+       vals:[497450,464792,407838,null,null,null,null,null,null,null,null,null], menorMejor:false},
+    ]
+  },
+  {
+    id:"sostenibilidad", codigo:"MP-3200", icono:"🌍", color:"#0C4A6E", colorBg:"#E0F2FE",
+    nombre:"Mejora Continua / Sostenibilidad", gerente:"N/A",
+    kpisHome:[0],
+    kpis:[
+      {nombre:"Tasa Cierre de No Conformidades", unidad:"%", nota:"NC cerradas / total abiertas",
+       vals:[0,0,0,0,0,0,null,null,null,null,null,null], menorMejor:false},
+    ]
+  },
+];
+
+// ── LÓGICA SEMÁFORO ────────────────────────────────────
+function getUlt(kpi) {
+  for(let i=kpi.vals.length-1;i>=0;i--) if(kpi.vals[i]!=null) return {v:kpi.vals[i],i};
   return null;
 }
-
-function inputSt(extra={}) {
-  return { width:"100%", background:CM.surface2, border:`1px solid ${CM.border}`, borderRadius:6, padding:"8px 10px", color:CM.text, fontSize:13, fontFamily:"inherit", outline:"none", ...extra };
+function getSem(kpi) {
+  const ult = getUlt(kpi);
+  if(!ult) return "gray";
+  const meta = kpi.metas?.[ult.i] ?? kpi.meta ?? null;
+  if(meta==null) return "blue";
+  const cumple = kpi.menorMejor ? ult.v<=meta : ult.v>=meta;
+  if(cumple) return "green";
+  const diff = Math.abs((ult.v-meta)/meta);
+  return diff<0.10 ? "amber" : "red";
 }
-function Badge({ texto, color }) {
-  return <span style={{ background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:.5, whiteSpace:"nowrap" }}>{texto}</span>;
-}
+const SEM_COLOR = {green:C.verdeT, amber:C.amberT, red:C.rojoT, blue:C.azulT, gray:C.muted};
+const SEM_BG    = {green:C.verdeL, amber:C.amberL, red:C.rojoL, blue:C.azulL, gray:"#F3F4F6"};
+const SEM_LABEL = {green:"En meta", amber:"En seguimiento", red:"Atención", blue:"Sin meta", gray:"Sin datos"};
 
-function FirmaModal({ tarea, onConfirm, onCancel }) {
-  const [obs, setObs] = useState("");
+// ── SPARKLINE MINI ────────────────────────────────────
+function Spark({vals, metas, menorMejor, h=24}) {
+  const nn = vals.filter(v=>v!=null);
+  if(!nn.length) return <div style={{height:h,background:"#F3F4F6",borderRadius:4}}/>;
+  const max=Math.max(...nn), min=Math.min(...nn), rng=max-min||max||1;
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999 }}>
-      <div style={{ background:CM.surface, border:`1px solid ${CM.border}`, borderRadius:14, padding:28, width:420, boxShadow:"0 12px 48px rgba(0,0,0,0.2)" }}>
-        <div style={{fontSize:18,marginBottom:4}}>✅ Confirmar Entrega</div>
-        <div style={{fontSize:12,color:CM.textGray,marginBottom:18}}>{tarea.id} — {tarea.desc}</div>
-        <div style={{background:CM.greenL,border:`1px solid ${CM.border}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12,color:CM.textMid}}>
-          <strong>📍 Destino:</strong> {tarea.dest}<br/>
-          <strong>👤 Mensajero:</strong> {tarea.mesName}<br/>
-          <strong>🕐 Asignada:</strong> {tarea.hora}
-        </div>
-        <label style={{fontSize:11,color:CM.textGray,fontWeight:600,display:"block",marginBottom:6}}>Observaciones de entrega (opcional)</label>
-        <textarea value={obs} onChange={e=>setObs(e.target.value)} placeholder="Ej: Entregado al guardia. Recibió: Juan García." style={inputSt({resize:"none",height:72,fontSize:12})}/>
-        <div style={{display:"flex",gap:10,marginTop:18}}>
-          <button onClick={()=>onConfirm(obs)} style={{flex:1,padding:10,background:CM.green,color:"#fff",border:"none",borderRadius:7,fontWeight:800,fontSize:13,cursor:"pointer"}}>✅ Confirmar entrega</button>
-          <button onClick={onCancel} style={{flex:1,padding:10,background:"transparent",color:CM.textGray,border:`1px solid ${CM.border}`,borderRadius:7,fontSize:13,cursor:"pointer"}}>Cancelar</button>
-        </div>
+    <div style={{display:"flex",gap:1.5,alignItems:"flex-end",height:h}}>
+      {vals.map((v,i)=>{
+        if(v==null) return <div key={i} style={{flex:1,height:3,background:"#E5E7EB",borderRadius:1,alignSelf:"flex-end"}}/>;
+        const pct = Math.max(((v-min)/rng)*100,8);
+        const meta = metas?.[i];
+        const ok = meta==null ? null : menorMejor ? v<=meta : v>=meta;
+        const col = ok==null ? "#93C5FD" : ok ? "#4ADE80" : "#F87171";
+        return <div key={i} style={{flex:1,height:`${pct}%`,background:col,borderRadius:"1.5px 1.5px 0 0"}}/>;
+      })}
+    </div>
+  );
+}
+
+// ── KPI CARD HOME ──────────────────────────────────────
+function KPIHome({kpi, color}) {
+  const ult = getUlt(kpi);
+  const sem = getSem(kpi);
+  return (
+    <div style={{padding:"14px 16px",background:C.card,borderRadius:10,border:`1px solid ${C.borde}`}}>
+      <div style={{fontSize:10.5,color:C.sub,marginBottom:8,lineHeight:1.3,fontWeight:500}}>
+        {kpi.nombre}
+      </div>
+      <div style={{fontSize:20,fontWeight:800,color:SEM_COLOR[sem],fontFamily:"'SF Mono','Consolas',monospace",lineHeight:1,marginBottom:4}}>
+        {ult ? fmtVal(ult.v,kpi) : "—"}
+      </div>
+      <div style={{fontSize:9.5,color:C.muted,marginBottom:8}}>{ult ? `${MESES[ult.i]} 2025` : "Sin datos"}</div>
+      <Spark vals={kpi.vals} metas={kpi.metas} menorMejor={kpi.menorMejor}/>
+      <div style={{display:"flex",alignItems:"center",gap:4,marginTop:8}}>
+        <div style={{width:6,height:6,borderRadius:"50%",background:SEM_COLOR[sem],flexShrink:0}}/>
+        <span style={{fontSize:9.5,color:SEM_COLOR[sem],fontWeight:600}}>{SEM_LABEL[sem]}</span>
       </div>
     </div>
   );
 }
 
-function MapaView({ tasks, messengers }) {
-  const mapRef  = useRef(null);
-  const mapObj  = useRef(null);
-  const markers = useRef([]);
-  const [info, setInfo] = useState("Cargando mapa...");
-  const activeTasks = tasks.filter(t => t.status !== "completada");
+// ── CARD GERENCIA (HOME) ───────────────────────────────
+function CardGerencia({g, onSelect}) {
+  const kpisShow = g.kpisHome.map(i=>g.kpis[i]).filter(Boolean);
+  const sems = kpisShow.map(getSem);
+  const worst = sems.includes("red")?"red":sems.includes("amber")?"amber":sems.includes("green")?"green":"blue";
 
-  useEffect(() => {
-    let cancelled = false;
-    async function init() {
-      const L = await getLeaflet();
-      if (cancelled || !mapRef.current) return;
-      if (!mapObj.current) {
-        mapObj.current = L.map(mapRef.current).setView([-0.1807, -78.4678], 12);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution:"© OpenStreetMap" }).addTo(mapObj.current);
-      }
-      markers.current.forEach(m => m.remove());
-      markers.current = [];
-      const mesColors = ["#1A6FAA","#6B46A8"];
-      let geocoded = 0;
-      for (const t of activeTasks) {
-        if (cancelled) break;
-        const coords = t.coords || await geocode(t.dest);
-        if (coords) {
-          t.coords = coords;
-          const col = mesColors[t.messenger] || CM.green;
-          const icon = L.divIcon({
-            className:"",
-            html:`<div style="background:${col};color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:13px"><span style="transform:rotate(45deg)">${typeIcons[t.tipo]}</span></div>`,
-            iconSize:[28,28], iconAnchor:[14,28]
-          });
-          const mk = L.marker([coords.lat, coords.lng], {icon}).addTo(mapObj.current)
-            .bindPopup(`<div style="font-family:sans-serif;min-width:160px"><div style="font-weight:700;margin-bottom:3px">${t.id}</div><div style="font-size:11px;color:#666;margin-bottom:3px">${typeIcons[t.tipo]} ${typeLabels[t.tipo]}</div><div style="font-size:12px;margin-bottom:3px">${t.desc}</div><div style="font-size:11px;color:#666">👤 ${messengers[t.messenger]?.name}</div><div style="font-size:11px;color:#666">📍 ${t.dest}</div></div>`);
-          markers.current.push(mk);
-          geocoded++;
-        }
-      }
-      if (activeTasks.length === 0) setInfo("No hay diligencias activas para mostrar.");
-      else if (geocoded === 0) setInfo("No se pudieron ubicar los destinos. Verifica que estén escritos correctamente.");
-      else {
-        setInfo(`${geocoded} de ${activeTasks.length} diligencias ubicadas en el mapa`);
-        const group = L.featureGroup(markers.current);
-        mapObj.current.fitBounds(group.getBounds().pad(0.35));
-      }
-    }
-    init();
-    return () => { cancelled = true; };
-  }, [tasks]);
+  return (
+    <div style={{background:C.card,borderRadius:14,border:`1px solid ${C.borde}`,
+      overflow:"hidden",boxShadow:"0 1px 3px #0000000d",transition:"box-shadow 0.2s"}}
+      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px #00000015"}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px #0000000d"}>
+      
+      {/* Header */}
+      <div style={{padding:"16px 20px",borderBottom:`1px solid ${C.borde}`,
+        display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:8,background:g.colorBg,
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+            {g.icono}
+          </div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:C.texto,lineHeight:1.2}}>{g.nombre}</div>
+            <div style={{fontSize:10.5,color:C.muted,marginTop:2}}>{g.codigo} · {g.gerente}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+          <span style={{fontSize:10,fontWeight:600,color:SEM_COLOR[worst],background:SEM_BG[worst],
+            padding:"3px 10px",borderRadius:20,border:`1px solid ${SEM_COLOR[worst]}30`}}>
+            {SEM_LABEL[worst]}
+          </span>
+          <button onClick={()=>onSelect(g.id)}
+            style={{fontSize:10,fontWeight:600,color:g.color,background:"transparent",
+              border:`1px solid ${g.color}40`,borderRadius:6,padding:"4px 10px",cursor:"pointer"}}>
+            Ver detalle →
+          </button>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:`repeat(${kpisShow.length},1fr)`,gap:10}}>
+        {kpisShow.map((k,i)=><KPIHome key={i} kpi={k} color={g.color}/>)}
+      </div>
+    </div>
+  );
+}
+
+// ── KPI DETAIL CARD ────────────────────────────────────
+function KPIDetail({kpi, color}) {
+  const ult = getUlt(kpi);
+  const sem = getSem(kpi);
+  const conDatos = kpi.vals.map((v,i)=>({v,i,m:kpi.metas?.[i]})).filter(x=>x.v!=null);
+
+  return (
+    <div style={{background:C.card,borderRadius:12,border:`1px solid ${C.borde}`,padding:"18px 20px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+        <div style={{flex:1,marginRight:12}}>
+          <div style={{fontSize:12.5,fontWeight:700,color:C.texto,lineHeight:1.3}}>{kpi.nombre}</div>
+          {kpi.nota && <div style={{fontSize:10,color:C.muted,marginTop:3}}>{kpi.nota}</div>}
+        </div>
+        <span style={{fontSize:10,fontWeight:600,color:SEM_COLOR[sem],background:SEM_BG[sem],
+          padding:"3px 10px",borderRadius:20,whiteSpace:"nowrap",border:`1px solid ${SEM_COLOR[sem]}30`}}>
+          {SEM_LABEL[sem]}
+        </span>
+      </div>
+
+      {/* Valor principal */}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:28,fontWeight:800,color:SEM_COLOR[sem],fontFamily:"'SF Mono','Consolas',monospace",lineHeight:1}}>
+          {ult ? fmtVal(ult.v,kpi) : "—"}
+        </div>
+        <div style={{fontSize:10.5,color:C.muted,marginTop:4}}>{ult ? `Último dato: ${MESES[ult.i]} 2025` : "Sin datos disponibles"}</div>
+      </div>
+
+      {/* Sparkline grande */}
+      <div style={{marginBottom:14}}>
+        <Spark vals={kpi.vals} metas={kpi.metas} menorMejor={kpi.menorMejor} h={40}/>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+          <span style={{fontSize:9,color:C.muted}}>Ene</span>
+          <span style={{fontSize:9,color:C.muted}}>Dic</span>
+        </div>
+      </div>
+
+      {/* Tabla mensual */}
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead>
+            <tr>
+              {conDatos.map(({i})=>(
+                <th key={i} style={{padding:"4px 6px",textAlign:"center",fontSize:9.5,
+                  color:C.muted,fontWeight:500,whiteSpace:"nowrap"}}>{MESES[i]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {conDatos.map(({v,i,m})=>{
+                const ok = m==null?null:kpi.menorMejor?v<=m:v>=m;
+                return (
+                  <td key={i} style={{padding:"4px 6px",textAlign:"center"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:ok==null?C.azulT:ok?C.verdeT:C.rojoT,
+                      fontFamily:"monospace",whiteSpace:"nowrap"}}>
+                      {fmtVal(v,kpi)}
+                    </div>
+                    {m!=null && <div style={{fontSize:8.5,color:C.muted,marginTop:1}}>/{fmtVal(m,kpi)}</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── VISTA DETALLE GERENCIA ─────────────────────────────
+function DetalleGerencia({g}) {
+  const sems = g.kpis.map(getSem);
+  const enMeta = sems.filter(s=>s==="green").length;
+  const atencion = sems.filter(s=>s==="red").length;
 
   return (
     <div>
-      <div style={{background:CM.surface2,border:`1px solid ${CM.border}`,borderRadius:8,padding:"10px 16px",marginBottom:12,fontSize:12,color:CM.textMid,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-        <span>🗺️ {info}</span>
-        <div style={{marginLeft:"auto",display:"flex",gap:14}}>
-          {[{c:"#1A6FAA",l:messengers[0]?.name},{c:"#6B46A8",l:messengers[1]?.name}].map((x,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:5,fontSize:11}}>
-              <div style={{width:10,height:10,borderRadius:"50%",background:x.c}}/>{x.l}
-            </div>
-          ))}
+      {/* Banner */}
+      <div style={{background:`linear-gradient(135deg,${g.color} 0%,${g.color}cc 100%)`,
+        borderRadius:14,padding:"22px 26px",marginBottom:20,
+        display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:48,height:48,borderRadius:12,background:"#ffffff20",
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>
+            {g.icono}
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#ffffff80",letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{g.codigo}</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#fff"}}>{g.nombre}</div>
+            <div style={{fontSize:12,color:"#ffffff80",marginTop:2}}>Gerente: {g.gerente} · Indicadores 2025</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:16}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:26,fontWeight:800,color:"#4ADE80"}}>{enMeta}</div>
+            <div style={{fontSize:10,color:"#ffffff80"}}>En meta</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:26,fontWeight:800,color:"#F87171"}}>{atencion}</div>
+            <div style={{fontSize:10,color:"#ffffff80"}}>Atención</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:26,fontWeight:800,color:"#fff"}}>{g.kpis.length}</div>
+            <div style={{fontSize:10,color:"#ffffff80"}}>Total KPIs</div>
+          </div>
         </div>
       </div>
-      <div ref={mapRef} style={{height:420,borderRadius:10,border:`1px solid ${CM.border}`,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.08)"}}/>
-      {activeTasks.length > 0 && (
-        <div style={{marginTop:12,display:"flex",flexWrap:"wrap",gap:6}}>
-          {activeTasks.map(t=>(
-            <div key={t.id} style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:7,padding:"5px 12px",fontSize:11,display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:7,height:7,borderRadius:"50%",background:typeColor[t.tipo]}}/>
-              <span style={{fontWeight:600}}>{t.id}</span>
-              <span style={{color:CM.textGray}}>{t.dest.slice(0,28)}{t.dest.length>28?"...":""}</span>
-              <Badge texto={messengers[t.messenger]?.name} color={t.messenger===0?CM.blue:CM.purple}/>
-            </div>
-          ))}
-        </div>
-      )}
+
+      {/* Grid KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+        {g.kpis.map((k,i)=><KPIDetail key={i} kpi={k} color={g.color}/>)}
+      </div>
     </div>
   );
 }
 
-export default function HVMensajeria() {
-  const [messengers, setMessengers] = useState([{name:"Mensajero 1",status:"libre"},{name:"Mensajero 2",status:"libre"}]);
-  const [tasks, setTasks]           = useState([]);
-  const [counter, setCounter]       = useState(1);
-  const [filter, setFilter]         = useState("todas");
-  const [activeTab, setActiveTab]   = useState("activas");
-  const [histFilter, setHistFilter] = useState("hoy");
-  const [saveLabel, setSaveLabel]   = useState("auto-guardado activo");
-  const [toast, setToast]           = useState("");
-  const [clock, setClock]           = useState("");
-  const [fechaHoy, setFechaHoy]     = useState("");
-  const [firmaModal, setFirmaModal] = useState(null);
-  const saveTimer = useRef(null);
-  const fTipo=useRef(),fDesc=useRef(),fDest=useRef(),fMens=useRef(),fPrio=useRef(),fNota=useRef();
+// ── NAVBAR ─────────────────────────────────────────────
+function Navbar({vista, setVista}) {
+  const [open, setOpen] = useState(null);
+  return (
+    <nav style={{background:C.nav,position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 0 #ffffff10"}}>
+      <div style={{display:"flex",alignItems:"center",padding:"0 20px",height:54,maxWidth:1440,margin:"0 auto"}}>
+        {/* Logo */}
+        <button onClick={()=>setVista("home")} style={{background:"none",border:"none",cursor:"pointer",
+          display:"flex",alignItems:"center",gap:8,padding:"0 4px",marginRight:20,flexShrink:0}}>
+          <span style={{fontSize:20}}>🌿</span>
+          <div>
+            <div style={{fontSize:13,fontWeight:800,color:"#fff",lineHeight:1}}>Hoja Verde 360°</div>
+            <div style={{fontSize:8,color:"#4ADE80",letterSpacing:1.5}}>PANEL EJECUTIVO</div>
+          </div>
+        </button>
 
-  useEffect(()=>{
-    const tick=()=>{
-      const n=new Date();
-      setClock(n.toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
-      setFechaHoy(n.toLocaleDateString("es-EC",{weekday:"long",year:"numeric",month:"long",day:"numeric"}));
-    };
-    tick(); const id=setInterval(tick,1000); return ()=>clearInterval(id);
-  },[]);
+        <div style={{width:1,height:24,background:"#ffffff18",marginRight:12,flexShrink:0}}/>
 
-  useEffect(()=>{
-    try {
-      const raw=localStorage.getItem(STORAGE_KEY);
-      if(!raw) return;
-      const d=JSON.parse(raw);
-      if(d.tasks)      setTasks(d.tasks);
-      if(d.counter)    setCounter(d.counter);
-      if(d.messengers) setMessengers(prev=>prev.map((m,i)=>({...m,status:d.messengers[i]||m.status})));
-      setSaveLabel("datos restaurados ✓");
-      setTimeout(()=>setSaveLabel("auto-guardado activo"),2500);
-    }catch(_){}
-  },[]);
+        {/* Items */}
+        <div style={{display:"flex",flex:1,overflowX:"auto",gap:0}}>
+          {GERENCIAS.map(g=>{
+            const isOpen = open===g.id;
+            const isActive = vista===g.id;
+            const sem = getSem(g.kpis[g.kpisHome[0]]);
+            return (
+              <div key={g.id} style={{position:"relative",flexShrink:0}}>
+                <button onClick={()=>setOpen(isOpen?null:g.id)}
+                  style={{background:isOpen||isActive?"#ffffff12":"transparent",
+                    border:"none",borderBottom:`2px solid ${isActive?"#4ADE80":"transparent"}`,
+                    padding:"0 14px",height:54,cursor:"pointer",
+                    display:"flex",alignItems:"center",gap:7,
+                    color:isActive?"#fff":"#ffffffaa",fontSize:12,
+                    fontWeight:isActive?700:400,whiteSpace:"nowrap",transition:"all 0.15s"}}>
+                  <span style={{fontSize:15}}>{g.icono}</span>
+                  <span style={{maxWidth:110,overflow:"hidden",textOverflow:"ellipsis"}}>{g.nombre}</span>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:SEM_COLOR[sem],flexShrink:0,
+                    boxShadow:`0 0 4px ${SEM_COLOR[sem]}`}}/>
+                  <span style={{fontSize:9,opacity:0.5,marginLeft:-2}}>{isOpen?"▲":"▼"}</span>
+                </button>
 
-  function persist(t,c,m){
-    localStorage.setItem(STORAGE_KEY,JSON.stringify({tasks:t,counter:c,messengers:m.map(x=>x.status)}));
-    setSaveLabel("✓ guardado");
-    clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>setSaveLabel("auto-guardado activo"),2000);
-  }
-  function showToast(msg){setToast(msg);setTimeout(()=>setToast(""),3000);}
+                {isOpen && (
+                  <>
+                    <div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setOpen(null)}/>
+                    <div style={{position:"absolute",top:54,left:0,zIndex:150,
+                      background:C.card,border:`1px solid ${C.borde}`,borderRadius:"0 0 12px 12px",
+                      boxShadow:"0 12px 32px #00000025",minWidth:260,overflow:"hidden"}}>
+                      {/* Header dropdown */}
+                      <div style={{background:g.color,padding:"12px 16px"}}>
+                        <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{g.icono} {g.nombre}</div>
+                        <div style={{fontSize:10,color:"#ffffff80",marginTop:2}}>{g.codigo} · {g.gerente}</div>
+                      </div>
+                      {/* KPIs rápidos */}
+                      <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:6}}>
+                        {g.kpisHome.map(ki=>{
+                          const k=g.kpis[ki]; if(!k) return null;
+                          const ult=getUlt(k); const sem=getSem(k);
+                          return (
+                            <div key={ki} style={{display:"flex",justifyContent:"space-between",
+                              alignItems:"center",padding:"8px 10px",background:"#F9FAFB",
+                              borderRadius:8,border:`1px solid ${C.borde}`}}>
+                              <span style={{fontSize:11,color:C.sub,flex:1,overflow:"hidden",
+                                textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:8}}>{k.nombre}</span>
+                              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                                <div style={{width:6,height:6,borderRadius:"50%",background:SEM_COLOR[sem]}}/>
+                                <span style={{fontSize:12,fontWeight:800,color:SEM_COLOR[sem],fontFamily:"monospace"}}>
+                                  {ult?fmtVal(ult.v,k):"—"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{padding:"0 12px 12px"}}>
+                        <button onClick={()=>{setVista(g.id);setOpen(null);}}
+                          style={{width:"100%",background:g.color,border:"none",borderRadius:8,
+                            padding:"9px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                          Ver todos los KPIs →
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-  function setStatus(idx,status){
-    const u=messengers.map((m,i)=>i===idx?{...m,status}:m);
-    setMessengers(u); persist(tasks,counter,u);
-    showToast(`${messengers[idx].name} → ${statusLabels[status]}`);
-  }
+        <div style={{fontSize:10.5,color:"#ffffff50",marginLeft:12,flexShrink:0,whiteSpace:"nowrap"}}>{hoy()}</div>
+      </div>
+    </nav>
+  );
+}
 
-  function addTask(){
-    const tipo=fTipo.current.value,desc=fDesc.current.value.trim();
-    const dest=fDest.current.value.trim(),midx=parseInt(fMens.current.value);
-    const prio=fPrio.current.value,nota=fNota.current.value.trim();
-    if(!desc){showToast("⚠️ Ingresa una descripción");return;}
-    if(!dest){showToast("⚠️ Ingresa el destino");return;}
-    const now=new Date();
-    const task={
-      id:"DG-"+String(counter).padStart(3,"0"),
-      tipo,desc,dest,messenger:midx,prioridad:prio,
-      status:"pendiente",nota,firmaObs:"",
-      hora:now.toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit"}),
-      fecha:now.toLocaleDateString("es-EC"),
-      fechaISO:now.toISOString().slice(0,10),
-    };
-    const nt=[...tasks,task],nc=counter+1;
-    setTasks(nt);setCounter(nc);persist(nt,nc,messengers);
-    fDesc.current.value="";fDest.current.value="";fNota.current.value="";
-    showToast(`✓ Asignada a ${messengers[midx].name}`);
-  }
-
-  function changeStatus(id,newStatus){
-    if(newStatus==="completada"){
-      const t=tasks.find(x=>x.id===id);
-      if(t){setFirmaModal({id,desc:t.desc,dest:t.dest,hora:t.hora,mesName:messengers[t.messenger]?.name});return;}
-    }
-    applyStatus(id,newStatus,"");
-  }
-
-  function applyStatus(id,status,firmaObs){
-    const hFin=new Date().toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit"});
-    const nt=tasks.map(t=>t.id===id?{...t,status,firmaObs,horaFin:status==="completada"?hFin:t.horaFin}:t);
-    setTasks(nt);persist(nt,counter,messengers);setFirmaModal(null);
-    showToast(status==="completada"?`✅ ${id} completada`:`✓ ${id} → ${status.replace("-"," ")}`);
-  }
-
-  function deleteTask(id){
-    const nt=tasks.filter(t=>t.id!==id);
-    setTasks(nt);persist(nt,counter,messengers);showToast("Diligencia eliminada");
-  }
-
-  function confirmReset(){
-    if(!window.confirm("¿Limpiar todas las diligencias del día?")) return;
-    const u=messengers.map(m=>({...m,status:"libre"}));
-    setTasks([]);setCounter(1);setMessengers(u);persist([],1,u);
-    showToast("✓ Registro limpiado");
-  }
-
-  async function exportExcel(){
-    if(!tasks.length){showToast("⚠️ No hay diligencias para exportar");return;}
-    const XLSX=await getXLSX();
-    const rows=tasks.map(t=>({
-      "ID":t.id,"Fecha":t.fecha,"Hora":t.hora,"Hora Fin":t.horaFin||"—",
-      "Tipo":typeLabels[t.tipo],"Descripción":t.desc,"Destino":t.dest,
-      "Mensajero":messengers[t.messenger]?.name,
-      "Prioridad":t.prioridad.charAt(0).toUpperCase()+t.prioridad.slice(1),
-      "Estado":t.status.replace("-"," ").replace(/\b\w/g,l=>l.toUpperCase()),
-      "Notas":t.nota||"","Obs. Entrega":t.firmaObs||"",
-    }));
-    const wb=XLSX.utils.book_new();
-    const ws=XLSX.utils.json_to_sheet(rows);
-    ws["!cols"]=[{wch:9},{wch:12},{wch:7},{wch:9},{wch:14},{wch:40},{wch:28},{wch:14},{wch:10},{wch:14},{wch:28},{wch:28}];
-    XLSX.utils.book_append_sheet(wb,ws,"Registro");
-    const ws2=XLSX.utils.json_to_sheet([
-      {Concepto:"Total",Valor:tasks.length},
-      {Concepto:"Pendientes",Valor:tasks.filter(t=>t.status==="pendiente").length},
-      {Concepto:"En progreso",Valor:tasks.filter(t=>t.status==="en-progreso").length},
-      {Concepto:"Completadas",Valor:tasks.filter(t=>t.status==="completada").length},
-      {Concepto:"---",Valor:""},
-      {Concepto:messengers[0].name,Valor:tasks.filter(t=>t.messenger===0).length+" diligencias"},
-      {Concepto:messengers[1].name,Valor:tasks.filter(t=>t.messenger===1).length+" diligencias"},
-    ]);
-    ws2["!cols"]=[{wch:22},{wch:22}];
-    XLSX.utils.book_append_sheet(wb,ws2,"Resumen");
-    XLSX.writeFile(wb,`HV_Mensajeria_${new Date().toISOString().slice(0,10)}.xlsx`);
-    showToast("✓ Excel exportado");
-  }
-
-  function histFilteredTasks(){
-    const now=new Date(),hoyISO=now.toISOString().slice(0,10);
-    const d=new Date(now);d.setDate(d.getDate()-((d.getDay()+6)%7));
-    const lunesISO=d.toISOString().slice(0,10);
-    const mesISO=hoyISO.slice(0,7);
-    return tasks.filter(t=>{
-      if(histFilter==="hoy")    return t.fechaISO===hoyISO;
-      if(histFilter==="semana") return t.fechaISO>=lunesISO;
-      if(histFilter==="mes")    return t.fechaISO?.startsWith(mesISO);
-      return true;
-    });
-  }
-
-  const filteredActive=tasks.filter(t=>{
-    if(t.status==="completada") return false;
-    if(filter==="todas") return true;
-    if(filter==="0"||filter==="1") return t.messenger===parseInt(filter);
-    return t.tipo===filter;
-  });
-
-  const histTasks = histFilteredTasks();
+// ── DASHBOARD HOME ─────────────────────────────────────
+function DashboardHome({setVista}) {
+  const total = GERENCIAS.length;
+  const enMeta = GERENCIAS.filter(g=>getSem(g.kpis[g.kpisHome[0]])==="green").length;
+  const atencion = GERENCIAS.filter(g=>getSem(g.kpis[g.kpisHome[0]])==="red").length;
+  const seguimiento = GERENCIAS.filter(g=>getSem(g.kpis[g.kpisHome[0]])==="amber").length;
 
   return (
-    <div style={{fontFamily:"'Inter','Segoe UI',sans-serif"}}>
-      {toast&&<div style={{position:"fixed",top:16,right:16,background:CM.green,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:12,fontWeight:700,zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>{toast}</div>}
-      {firmaModal&&<FirmaModal tarea={firmaModal} onConfirm={obs=>applyStatus(firmaModal.id,"completada",obs)} onCancel={()=>setFirmaModal(null)}/>}
-
-      <div style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:12,padding:"14px 20px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+    <div>
+      {/* Banner */}
+      <div style={{background:"linear-gradient(135deg,#1A2E0A 0%,#2D5016 100%)",borderRadius:16,
+        padding:"24px 28px",marginBottom:22,display:"flex",justifyContent:"space-between",
+        alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div>
-          <div style={{fontSize:15,fontWeight:700,color:CM.text}}>Centro de Despacho — Mensajería HV</div>
-          <div style={{fontSize:11,color:CM.textGray,marginTop:2}}>{fechaHoy}</div>
+          <div style={{fontSize:10,color:"#4ADE80",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Panel Ejecutivo 2025</div>
+          <h1 style={{fontSize:24,fontWeight:800,color:"#fff",margin:0,lineHeight:1.2}}>Dashboard General</h1>
+          <p style={{fontSize:12.5,color:"#ffffff70",margin:"6px 0 0"}}>Grupo Hoja Verde · {total} Gerencias · Indicadores de Macroprocesos</p>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:11,color:CM.greenM,fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-            <div style={{width:7,height:7,borderRadius:"50%",background:CM.greenM}}/>{saveLabel}
-          </div>
-          <div style={{fontFamily:"monospace",fontSize:13,color:CM.textGray}}>{clock}</div>
-          <button onClick={exportExcel} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:7,color:CM.green,fontSize:12,fontWeight:700,cursor:"pointer"}}>📊 Exportar Excel</button>
+        <div style={{display:"flex",gap:20}}>
+          {[
+            {n:enMeta,     l:"En Meta",        c:"#4ADE80"},
+            {n:seguimiento,l:"En Seguimiento",  c:"#FCD34D"},
+            {n:atencion,   l:"Atención",        c:"#F87171"},
+          ].map((s,i)=>(
+            <div key={i} style={{textAlign:"center",padding:"0 8px"}}>
+              <div style={{fontSize:32,fontWeight:800,color:s.c,lineHeight:1}}>{s.n}</div>
+              <div style={{fontSize:10,color:"#ffffff70",marginTop:4}}>{s.l}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"310px 1fr",gap:20}}>
-        <div>
-          <div style={{marginBottom:18}}>
-            <div style={{fontSize:10,fontWeight:700,color:CM.textGray,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Mensajeros</div>
-            {messengers.map((m,i)=>{
-              const col={libre:CM.green,"en-ruta":CM.amber,"no-disponible":CM.red}[m.status];
-              const mine=tasks.filter(t=>t.messenger===i&&t.status!=="completada");
-              return (
-                <div key={i} style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:10,padding:14,marginBottom:10,borderLeft:`4px solid ${col}`,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:34,height:34,borderRadius:"50%",background:col+"22",border:`2px solid ${col}55`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,color:col}}>{i===0?"M1":"M2"}</div>
-                      <div>
-                        <div style={{fontWeight:700,fontSize:13,color:CM.text}}>{m.name}</div>
-                        <div style={{fontSize:10,color:CM.textGray}}>{mine.length} activa{mine.length!==1?"s":""}</div>
-                      </div>
-                    </div>
-                    <Badge texto={statusLabels[m.status]} color={col}/>
-                  </div>
-                  <div style={{marginBottom:10}}>
-                    {mine.length===0
-                      ? <div style={{fontSize:11,color:CM.textGray,fontStyle:"italic"}}>Sin diligencias asignadas</div>
-                      : mine.map(t=>(
-                        <div key={t.id} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:CM.textMid,background:CM.surface2,padding:"3px 8px",borderRadius:4,marginBottom:3}}>
-                          <div style={{width:5,height:5,borderRadius:"50%",flexShrink:0,background:t.status==="en-progreso"?CM.blue:CM.amber}}/>
-                          {typeIcons[t.tipo]} {t.desc.slice(0,30)}{t.desc.length>30?"...":""}
-                        </div>
-                      ))
-                    }
-                  </div>
-                  <div style={{display:"flex",gap:5}}>
-                    {[["libre","Libre",CM.green],["en-ruta","En ruta",CM.amber],["no-disponible","No disp.",CM.red]].map(([s,l,ac])=>(
-                      <button key={s} onClick={()=>setStatus(i,s)} style={{flex:1,padding:"5px 0",fontSize:10,fontWeight:600,border:`1px solid ${m.status===s?ac:CM.border}`,background:m.status===s?ac+"18":"transparent",color:m.status===s?ac:CM.textGray,borderRadius:4,cursor:"pointer"}}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:12,padding:16}}>
-            <div style={{fontSize:10,fontWeight:700,color:CM.textGray,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>Nueva Diligencia</div>
-            {[
-              {label:"Tipo",el:<select ref={fTipo} style={inputSt()}><option value="bancario">🏦 Trámite bancario / pago</option><option value="entrega">📦 Entrega física</option><option value="recogida">🔄 Recogida / pick-up</option><option value="institucional">🏛️ Diligencia institucional</option></select>},
-              {label:"Descripción",el:<textarea ref={fDesc} placeholder="Ej: Pago factura Agroquímicos…" style={inputSt({resize:"none",height:56,fontSize:12})}/>},
-              {label:"Destino / Lugar",el:<input ref={fDest} placeholder="Ej: Banco Pichincha, Av. Amazonas" style={inputSt()}/>},
-              {label:"Notas internas (opcional)",el:<input ref={fNota} placeholder="Ej: Preguntar por el Sr. López" style={inputSt({fontSize:12})}/>},
-            ].map(({label,el})=>(
-              <div key={label} style={{marginBottom:11}}>
-                <label style={{fontSize:11,color:CM.textGray,fontWeight:500,display:"block",marginBottom:4}}>{label}</label>
-                {el}
-              </div>
-            ))}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-              <div>
-                <label style={{fontSize:11,color:CM.textGray,fontWeight:500,display:"block",marginBottom:4}}>Mensajero</label>
-                <select ref={fMens} style={inputSt()}><option value="0">{messengers[0].name}</option><option value="1">{messengers[1].name}</option></select>
-              </div>
-              <div>
-                <label style={{fontSize:11,color:CM.textGray,fontWeight:500,display:"block",marginBottom:4}}>Prioridad</label>
-                <select ref={fPrio} style={inputSt()}><option value="alta">🔴 Alta</option><option value="media">🟡 Media</option><option value="baja">⚪ Baja</option></select>
-              </div>
-            </div>
-            <button onClick={addTask} style={{width:"100%",padding:10,background:CM.green,color:"#fff",border:"none",borderRadius:7,fontWeight:800,fontSize:13,cursor:"pointer"}}>+ Asignar Diligencia</button>
-            <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${CM.border}`,textAlign:"right"}}>
-              <button onClick={confirmReset} style={{padding:"4px 12px",fontSize:11,border:`1px solid ${CM.red}44`,background:"transparent",color:CM.red,borderRadius:5,cursor:"pointer"}}>🗑 Limpiar día</button>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-            {[{v:tasks.length,l:"Total hoy",c:CM.text},{v:tasks.filter(t=>t.status==="pendiente").length,l:"Pendientes",c:CM.amber},{v:tasks.filter(t=>t.status==="en-progreso").length,l:"En progreso",c:CM.blue},{v:tasks.filter(t=>t.status==="completada").length,l:"Completadas",c:CM.green}].map(({v,l,c})=>(
-              <div key={l} style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:10,padding:"14px 18px",borderTop:`3px solid ${c}`}}>
-                <div style={{fontSize:28,fontWeight:800,color:c,fontFamily:"monospace"}}>{v}</div>
-                <div style={{fontSize:11,color:CM.textGray,marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{display:"flex",borderBottom:`2px solid ${CM.border}`,marginBottom:16}}>
-            {[{id:"activas",label:"Diligencias Activas"},{id:"mapa",label:"🗺️ Mapa"},{id:"historial",label:"Historial"}].map(t=>(
-              <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{background:"transparent",border:"none",borderBottom:`2px solid ${activeTab===t.id?CM.green:"transparent"}`,marginBottom:-2,padding:"8px 18px",fontSize:12,fontWeight:activeTab===t.id?700:400,color:activeTab===t.id?CM.green:CM.textGray,cursor:"pointer"}}>{t.label}</button>
-            ))}
-          </div>
-
-          {activeTab==="activas" && <>
-            <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-              {[{f:"todas",l:"Todas"},{f:"bancario",l:"Bancarias"},{f:"entrega",l:"Entregas"},{f:"recogida",l:"Recogidas"},{f:"institucional",l:"Institucionales"},{f:"0",l:messengers[0].name},{f:"1",l:messengers[1].name}].map(({f,l})=>(
-                <button key={f} onClick={()=>setFilter(f)} style={{padding:"4px 12px",fontSize:11,fontWeight:filter===f?700:400,border:`1px solid ${filter===f?CM.green:CM.border}`,background:filter===f?CM.greenL:"transparent",color:filter===f?CM.green:CM.textGray,borderRadius:16,cursor:"pointer"}}>{l}</button>
-              ))}
-            </div>
-            {filteredActive.length===0
-              ? <div style={{textAlign:"center",padding:48,color:CM.textGray,fontSize:13}}><div style={{fontSize:32,marginBottom:10}}>📋</div>Sin diligencias activas</div>
-              : filteredActive.map(t=>(
-                <div key={t.id} style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:10,padding:14,marginBottom:10,display:"grid",gridTemplateColumns:"5px 1fr auto",gap:14,boxShadow:"0 1px 3px rgba(0,0,0,.05)"}}>
-                  <div style={{background:typeColor[t.tipo],borderRadius:3}}/>
-                  <div>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,flexWrap:"wrap"}}>
-                      <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>{t.id}</span>
-                      <Badge texto={`${typeIcons[t.tipo]} ${typeLabels[t.tipo]}`} color={typeColor[t.tipo]}/>
-                      <Badge texto={t.prioridad.toUpperCase()} color={prioColor[t.prioridad]}/>
-                    </div>
-                    <div style={{fontSize:13,fontWeight:600,color:CM.text,marginBottom:4}}>{t.desc}</div>
-                    <div style={{fontSize:12,color:CM.textGray,marginBottom:4}}>📍 {t.dest}</div>
-                    {t.nota&&<div style={{fontSize:11,color:CM.textMid,background:CM.surface2,padding:"3px 8px",borderRadius:4,marginBottom:4,borderLeft:`3px solid ${CM.border}`}}>📝 {t.nota}</div>}
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:CM.textGray}}>
-                        <div style={{width:18,height:18,borderRadius:"50%",background:t.messenger===0?CM.blueL:CM.amberL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:800,color:t.messenger===0?CM.blue:CM.amber}}>{t.messenger===0?"M1":"M2"}</div>
-                        {messengers[t.messenger]?.name}
-                      </div>
-                      <span style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>Asignada {t.hora}</span>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-                    <select value={t.status} onChange={e=>changeStatus(t.id,e.target.value)} style={{fontSize:11,padding:"4px 8px",borderRadius:5,border:`1px solid ${CM.border}`,background:CM.surface2,color:CM.text,cursor:"pointer",outline:"none"}}>
-                      <option value="pendiente">⏳ Pendiente</option>
-                      <option value="en-progreso">🔵 En progreso</option>
-                      <option value="completada">✅ Completada</option>
-                    </select>
-                    <Badge texto={t.status.replace("-"," ").toUpperCase()} color={t.status==="completada"?CM.green:t.status==="en-progreso"?CM.blue:CM.amber}/>
-                    <button onClick={()=>deleteTask(t.id)} style={{fontSize:10,padding:"3px 8px",border:`1px solid ${CM.red}44`,background:"transparent",color:CM.red,borderRadius:4,cursor:"pointer"}}>Eliminar</button>
-                  </div>
-                </div>
-              ))
-            }
-          </>}
-
-          {activeTab==="mapa" && <MapaView tasks={tasks} messengers={messengers}/>}
-
-          {activeTab==="historial" && <>
-            <div style={{display:"flex",gap:6,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:11,color:CM.textGray}}>Período:</span>
-              {[{f:"hoy",l:"Hoy"},{f:"semana",l:"Esta semana"},{f:"mes",l:"Este mes"},{f:"todo",l:"Todo"}].map(({f,l})=>(
-                <button key={f} onClick={()=>setHistFilter(f)} style={{padding:"4px 12px",fontSize:11,fontWeight:histFilter===f?700:400,border:`1px solid ${histFilter===f?CM.green:CM.border}`,background:histFilter===f?CM.greenL:"transparent",color:histFilter===f?CM.green:CM.textGray,borderRadius:16,cursor:"pointer"}}>{l}</button>
-              ))}
-              <span style={{marginLeft:"auto",fontSize:11,color:CM.textGray}}>{histTasks.length} registro{histTasks.length!==1?"s":""}</span>
-            </div>
-            <div style={{background:CM.surface,border:`1px solid ${CM.border}`,borderRadius:12,overflow:"hidden"}}>
-              <div style={{display:"grid",gridTemplateColumns:"75px 1fr 100px 90px 75px 85px",gap:10,padding:"9px 14px",background:CM.surface2,fontSize:10,fontWeight:700,color:CM.textGray,textTransform:"uppercase",letterSpacing:1}}>
-                <div>ID</div><div>Diligencia</div><div>Mensajero</div><div>Tipo</div><div>Hora</div><div>Estado</div>
-              </div>
-              {histTasks.length===0
-                ? <div style={{textAlign:"center",padding:40,color:CM.textGray,fontSize:13}}>📂 Sin registros en este período</div>
-                : histTasks.map(t=>(
-                  <div key={t.id}>
-                    <div style={{display:"grid",gridTemplateColumns:"75px 1fr 100px 90px 75px 85px",gap:10,padding:"10px 14px",borderTop:`1px solid ${CM.border}`,fontSize:12,alignItems:"start"}}>
-                      <div style={{fontFamily:"monospace",fontSize:11,color:CM.textGray,paddingTop:2}}>{t.id}</div>
-                      <div>
-                        <div style={{color:CM.text,fontWeight:500,marginBottom:2}}>{t.desc.slice(0,36)}{t.desc.length>36?"...":""}</div>
-                        <div style={{fontSize:10,color:CM.textGray}}>📍 {t.dest.slice(0,34)}{t.dest.length>34?"...":""}</div>
-                        {t.nota&&<div style={{fontSize:10,color:CM.textMid}}>📝 {t.nota.slice(0,34)}</div>}
-                      </div>
-                      <div style={{fontSize:11,color:CM.textGray,paddingTop:2}}>{messengers[t.messenger]?.name}</div>
-                      <div><Badge texto={typeLabels[t.tipo]} color={typeColor[t.tipo]}/></div>
-                      <div style={{fontFamily:"monospace",fontSize:10,color:CM.textGray}}>
-                        <div>{t.hora}</div>
-                        {t.horaFin&&<div style={{color:CM.greenM}}>✓{t.horaFin}</div>}
-                      </div>
-                      <div><Badge texto={t.status.replace("-"," ")} color={t.status==="completada"?CM.green:t.status==="en-progreso"?CM.blue:CM.amber}/></div>
-                    </div>
-                    {t.firmaObs&&<div style={{padding:"5px 14px 8px",fontSize:11,color:CM.textMid,background:CM.greenL,borderTop:`1px dashed ${CM.border}`}}>✅ <strong>Obs. entrega:</strong> {t.firmaObs}</div>}
-                  </div>
-                ))
-              }
-            </div>
-          </>}
-        </div>
+      {/* Grid gerencias */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:16}}>
+        {GERENCIAS.map(g=><CardGerencia key={g.id} g={g} onSelect={setVista}/>)}
       </div>
+    </div>
+  );
+}
+
+// ── APP ────────────────────────────────────────────────
+export default function App() {
+  const [vista, setVista] = useState("home");
+  const gerSel = GERENCIAS.find(g=>g.id===vista);
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",color:C.texto}}>
+      <Navbar vista={vista} setVista={setVista}/>
+      <div style={{padding:"24px 24px 48px",maxWidth:1440,margin:"0 auto"}}>
+        {vista==="home" ? (
+          <DashboardHome setVista={setVista}/>
+        ) : (
+          <>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}>
+              <button onClick={()=>setVista("home")}
+                style={{background:"none",border:"none",color:C.azulT,cursor:"pointer",
+                  fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                ← Panel General
+              </button>
+              <span style={{color:C.muted,fontSize:12}}>/</span>
+              <span style={{fontSize:12,color:C.sub,fontWeight:500}}>{gerSel?.nombre}</span>
+            </div>
+            {gerSel && <DetalleGerencia g={gerSel}/>}
+          </>
+        )}
+      </div>
+      <style>{`
+        *{box-sizing:border-box;margin:0;padding:0;}
+        ::-webkit-scrollbar{width:5px;height:5px;}
+        ::-webkit-scrollbar-track{background:#F7F8FA;}
+        ::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:4px;}
+        nav *::-webkit-scrollbar{display:none;}
+      `}</style>
     </div>
   );
 }
