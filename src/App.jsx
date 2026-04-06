@@ -402,7 +402,7 @@ function Navbar({vista, setVista}) {
             const sem = getSem(g.kpis[g.kpisHome[0]]);
             return (
               <div key={g.id} style={{position:"relative",flexShrink:0}}>
-                <button onClick={()=>setOpen(isOpen?null:g.id)}
+                <button onClick={()=>{setVista(g.id);setOpen(null);}}
                   style={{background:isOpen||isActive?"#ffffff12":"transparent",
                     border:"none",borderBottom:`2px solid ${isActive?"#4ADE80":"transparent"}`,
                     padding:"0 14px",height:54,cursor:"pointer",
@@ -545,4 +545,3 @@ export default function App() {
     </div>
   );
 }
- 
